@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap');
+@import "tailwindcss";
+
+:root {
+  --bg:       #080809;
+  --surface:  #0D0D10;
+  --surface2: #12121A;
+  --border:   #1C1C28;
+  --border2:  #242432;
+  --pink:     #E6007A;
+  --cyan:     #00D4FF;
+  --green:    #00FF88;
+  --amber:    #FFB800;
+  --red:      #FF4444;
+  --muted:    #52526A;
+  --text:     #E2E2EE;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* Ticker animation */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Pulse animation for status dots */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* Spinner animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Glow animation */
+@keyframes rateGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(230,0,122,0.3); }
+  50%       { box-shadow: 0 0 50px rgba(230,0,122,0.5), 0 0 100px rgba(230,0,122,0.1); }
+}
+.rate-glow { animation: rateGlow 3s ease-in-out infinite; }
+
+/* Input reset */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+input[type="number"] { -moz-appearance: textfield; }
+input:focus { outline: none; }
+
+/* RainbowKit override: match our dark theme */
+[data-rk] * { font-family: 'IBM Plex Mono', monospace !important; }
