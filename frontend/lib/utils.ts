@@ -1,0 +1,79 @@
+import { formatUnits, parseUnits } from "viem";
+import { DOT_DECIMALS } from "@/constants";
+
+// ─── DOT Formatting ─────────────────────────────────────────────────────────
+
+export function formatDOT(value: bigint, digits = 4): string {
+  const formatted = formatUnits(value, DOT_DECIMALS);
+  const num = parseFloat(formatted);
+  if (num === 0) return "0";
+  if (num < 0.0001) return "< 0.0001";
+  return num.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+export function formatDOTCompact(value: bigint): string {
+  const num = parseFloat(formatUnits(value, DOT_DECIMALS));
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(2)}M`;
+  if (num >= 1_000)     return `${(num / 1_000).toFixed(2)}K`;
+  return num.toFixed(2);
+}
+
+export function parseDOT(value: string): bigint {
+  try { return parseUnits(value, DOT_DECIMALS); }
+  catch { return 0n; }
+}
+
+// ─── Percentages ────────────────────────────────────────────────────────────
+
+export function formatPercent(value: bigint, precision = 18, digits = 2): string {
+  const num = parseFloat(formatUnits(value, precision)) * 100;
+  return num.toFixed(digits) + "%";
+}
+
+export function formatRate(value: bigint, precision = 18, digits = 4): string {
+  return parseFloat(formatUnits(value, precision)).toFixed(digits);
+}
+
+// ─── Block Numbers ──────────────────────────────────────────────────────────
+
+export function blocksToTime(blocks: bigint): string {
+  const seconds = Number(blocks) * 12; // 12s block time
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  return `${days}d ${hours}h`;
+}
+
+export function blocksRemaining(targetBlock: bigint, currentBlock: bigint): bigint {
+  return targetBlock > currentBlock ? targetBlock - currentBlock : 0n;
+}
+
+// ─── Address ────────────────────────────────────────────────────────────────
+
+export function truncateAddress(addr: string): string {
+  if (!addr || addr.length < 10) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+export function isZeroAddress(addr: string): boolean {
+  return !addr || addr === "0x" || addr === "0x0000000000000000000000000000000000000000";
+}
+
+// ─── Status Labels ──────────────────────────────────────────────────────────
+
+export const ORDER_STATUS_LABELS = ["Open", "Matched", "Settled", "Cancelled", "Expired"] as const;
+export const OPTION_STATUS_LABELS = ["Active", "Purchased", "Exercised", "Expired"] as const;
+export const SETTLEMENT_STATUS_LABELS = ["None", "Pending", "Confirmed", "Failed"] as const;
+
+export const ORDER_STATUS_COLORS: Record<string, string> = {
+  Open: "var(--green)", Matched: "var(--cyan)", Settled: "var(--text)",
+  Cancelled: "var(--muted)", Expired: "var(--amber)",
+};
+
+export const OPTION_STATUS_COLORS: Record<string, string> = {
+  Active: "var(--green)", Purchased: "var(--cyan)", Exercised: "var(--text)", Expired: "var(--amber)",
+};
