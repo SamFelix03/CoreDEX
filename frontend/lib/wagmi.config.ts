@@ -2,13 +2,13 @@ import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { defineChain } from "viem";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 
-export const assetHubWestend = defineChain({
+export const polkadotHubTestnet = defineChain({
   id:   ASSET_HUB_CHAIN_ID,
-  name: "Asset Hub Westend",
-  nativeCurrency: { name: "WND", symbol: "WND", decimals: 18 },
+  name: "Polkadot Hub TestNet",
+  nativeCurrency: { name: "PAS", symbol: "PAS", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://westend-asset-hub-eth-rpc.polkadot.io"] },
-    public:  { http: ["https://westend-asset-hub-eth-rpc.polkadot.io"] },
+    default: { http: ["https://services.polkadothub-rpc.com/testnet"] },
+    public:  { http: ["https://services.polkadothub-rpc.com/testnet"] },
   },
   blockExplorers: {
     default: { name: "Subscan", url: "https://assethub-westend.subscan.io" },
@@ -37,6 +37,6 @@ const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "000000000
 export const wagmiConfig = getDefaultConfig({
   appName:   "CoreDEX",
   projectId,
-  chains:    [assetHubWestend, assetHubPolkadot],
+  chains:    [polkadotHubTestnet, assetHubPolkadot],
   ssr:       true,
 });

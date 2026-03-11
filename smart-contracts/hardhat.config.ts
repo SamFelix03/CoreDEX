@@ -24,8 +24,13 @@ const config: HardhatUserConfig = {
         localhost: {
             url: "http://127.0.0.1:8545",
         },
+        polkadotTestNet: {
+            url: process.env.POLKADOT_TESTNET_RPC || "https://services.polkadothub-rpc.com/testnet",
+            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+            chainId: 420420417,
+        },
         assetHub: {
-            url: process.env.ASSET_HUB_RPC || "",
+            url: process.env.ASSET_HUB_RPC || "https://westend-asset-hub-eth-rpc.polkadot.io",
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
             chainId: 420420421,
         },
