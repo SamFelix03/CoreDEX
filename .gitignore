@@ -16,6 +16,7 @@ out/
 artifacts/
 cache/
 coverage/
+typechain-types/
 
 # Environment variables
 .env
@@ -50,6 +51,10 @@ next-env.d.ts
 # Testing
 coverage/
 
+# Simulation artifacts
+simulation-addresses.json
+
+polkadot-sdk-master/
 # Rust
 target/
 Cargo.lock

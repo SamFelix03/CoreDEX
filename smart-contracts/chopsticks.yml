@@ -1,0 +1,20 @@
+# Chopsticks configuration for CoreDEX simulation
+# Forks the Polkadot Hub TestNet locally for end-to-end testing
+#
+# Usage:
+#   npx @acala-network/chopsticks --config chopsticks.yml
+#
+# This creates a local fork at ws://localhost:8000 (Substrate RPC)
+# and http://localhost:8545 (EVM RPC via eth-rpc-adapter)
+
+endpoint: wss://services.polkadothub-rpc.com/testnet
+port: 8000
+
+# Mock storage overrides for simulation
+# These inject initial state into the forked runtime
+mock-signature-host: true
+
+# Block production settings
+block:
+  # Auto-produce blocks every 6 seconds (matches relay chain)
+  time: 6000
