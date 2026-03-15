@@ -1,4 +1,6 @@
 "use client";
+
+import { ArrowUpRight, TrendingUp } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useProtocolStatus } from "@/hooks/useProtocolStatus";
@@ -6,51 +8,96 @@ import { useVaultStats } from "@/hooks/useVault";
 import { useLedgerStats } from "@/hooks/useLedger";
 import { useAccount } from "wagmi";
 import { truncateAddress } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+
+const statsConfig = [
+  { title: "Registry Version", key: "version", isPrimary: true },
+  { title: "Governance", key: "governance", isPrimary: false },
+  { title: "Total Locks", key: "totalLocks", isPrimary: false },
+  { title: "Vault Deposits", key: "vaultDeposits", isPrimary: false },
+  { title: "Vault Lent", key: "vaultLent", isPrimary: false },
+  { title: "Available Regions", key: "availableRegions", isPrimary: false },
+  { title: "Your Positions", key: "yourPositions", isPrimary: false },
+  { title: "Your Margin", key: "yourMargin", isPrimary: false },
+];
 
 export function ProtocolOverview() {
   const { address } = useAccount();
   const { paused, governance, version, isLoading: statusLoading } = useProtocolStatus();
   const { stats, isLoading: vaultLoading } = useVaultStats();
   const { totalLockEvents, marginBalance, openPositionCount, isLoading: ledgerLoading } = useLedgerStats(address);
-
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const isLoading = statusLoading || vaultLoading || ledgerLoading;
 
-  return (
-    <Card>
-      <CardHeader
-        label="Protocol Overview"
-        right={
-          paused !== undefined && (
-            <Badge
-              label={paused ? "Paused" : "Active"}
-              color={paused ? "var(--red)" : "var(--green)"}
-            />
-          )
-        }
-      />
-      <div style={{ padding: 16, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        <StatBox label="Registry Version" value={isLoading ? "…" : String(version ?? 0)} />
-        <StatBox label="Governance" value={isLoading ? "…" : truncateAddress(governance ?? "")} color="var(--cyan)" />
-        <StatBox label="Total Locks" value={isLoading ? "…" : String(totalLockEvents)} />
-        <StatBox label="Vault Deposits" value={isLoading ? "…" : String(stats?.totalDeposited ?? 0)} />
-        <StatBox label="Vault Lent" value={isLoading ? "…" : String(stats?.totalLent ?? 0)} />
-        <StatBox label="Available Regions" value={isLoading ? "…" : String(stats?.availableRegions ?? 0)} color="var(--green)" />
-        <StatBox label="Your Positions" value={isLoading ? "…" : String(openPositionCount)} color="var(--pink)" />
-        <StatBox label="Your Margin" value={isLoading ? "…" : String(marginBalance) + " wei"} />
-      </div>
-    </Card>
-  );
-}
+  const values: Record<string, string> = {
+    version: isLoading ? "…" : String(version ?? 0),
+    governance: isLoading ? "…" : truncateAddress(governance ?? ""),
+    totalLocks: isLoading ? "…" : String(totalLockEvents),
+    vaultDeposits: isLoading ? "…" : String(stats?.totalDeposited ?? 0),
+    vaultLent: isLoading ? "…" : String(stats?.totalLent ?? 0),
+    availableRegions: isLoading ? "…" : String(stats?.availableRegions ?? 0),
+    yourPositions: isLoading ? "…" : String(openPositionCount),
+    yourMargin: isLoading ? "…" : String(marginBalance) + " wei",
+  };
 
-function StatBox({ label, value, color = "var(--text)" }: { label: string; value: string; color?: string }) {
   return (
-    <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 3, padding: "10px 12px" }}>
-      <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "var(--muted)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6 }}>
-        {label}
-      </div>
-      <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 15, color }}>
-        {value}
-      </div>
+    <div className="space-y-6">
+      <Card className="overflow-hidden p-0">
+        <CardHeader
+          label="Protocol Overview"
+          right={
+            paused !== undefined && (
+              <Badge
+                label={paused ? "Paused" : "Active"}
+                color={paused ? "var(--red)" : "var(--green)"}
+              />
+            )
+          }
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6">
+          {statsConfig.map((stat, index) => (
+            <div
+              key={stat.key}
+              onMouseEnter={() => setHoveredCard(index)}
+              onMouseLeave={() => setHoveredCard(null)}
+              style={{ animationDelay: `${index * 80}ms` }}
+              className={cn(
+                "rounded-xl border border-border p-5 transition-all duration-500 ease-out animate-slide-in-up cursor-pointer",
+                stat.isPrimary
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "bg-card text-card-foreground shadow-md",
+                hoveredCard === index ? "scale-[1.02] shadow-xl" : ""
+              )}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <h3 className="text-xs font-medium opacity-90 uppercase tracking-wider">
+                  {stat.title}
+                </h3>
+                <div
+                  className={cn(
+                    "size-6 rounded-full flex items-center justify-center transition-transform duration-300",
+                    stat.isPrimary ? "bg-primary-foreground/20" : "bg-primary/20",
+                    hoveredCard === index && "rotate-45"
+                  )}
+                >
+                  <ArrowUpRight
+                    className={cn(
+                      "size-3.5",
+                      stat.isPrimary ? "text-primary-foreground" : "text-primary"
+                    )}
+                  />
+                </div>
+              </div>
+              <p className="text-2xl font-bold mb-1">{values[stat.key]}</p>
+              <div className="flex items-center gap-1.5 text-xs opacity-80">
+                <TrendingUp className="size-3" />
+                <span>Protocol stats</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

@@ -1,44 +1,98 @@
-import { type ReactNode } from "react";
-import clsx from "clsx";
+"use client";
 
-interface CardProps {
-  children: ReactNode;
-  className?: string;
-  glow?: boolean;
-  style?: React.CSSProperties;
-}
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-export function Card({ children, className, glow, style }: CardProps) {
+function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={clsx(glow && "rate-glow", className)}
-      style={{
-        background:   "var(--surface)",
-        border:       "1px solid var(--border)",
-        borderRadius: 4,
-        overflow:     "hidden",
-        ...style,
-      }}
+      data-slot="card"
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-4 rounded-xl border border-border py-6 shadow-md transition-all duration-500",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+function CardHeader({
+  label,
+  right,
+  className,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & {
+  label?: string;
+  right?: React.ReactNode;
+}) {
+  if (label !== undefined) {
+    return (
+      <div
+        className={cn(
+          "flex items-center justify-between border-b border-border bg-secondary/50 px-6 py-4",
+          className
+        )}
+      >
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </span>
+        {right}
+      </div>
+    );
+  }
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "grid items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        className
+      )}
+      {...props}
     >
       {children}
     </div>
   );
 }
 
-export function CardHeader({ label, right }: { label: string; right?: ReactNode }) {
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div style={{
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "10px 16px", borderBottom: "1px solid var(--border)",
-      background: "var(--surface2)",
-    }}>
-      <span style={{
-        fontFamily: "'IBM Plex Mono',monospace", fontSize: 10,
-        color: "var(--muted)", letterSpacing: "0.12em", textTransform: "uppercase",
-      }}>
-        {label}
-      </span>
-      {right}
-    </div>
+    <div
+      data-slot="card-title"
+      className={cn("text-sm font-semibold uppercase tracking-wider text-muted-foreground", className)}
+      {...props}
+    />
   );
 }
+
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  );
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-6 pb-6", className)}
+      {...props}
+    />
+  );
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      {...props}
+    />
+  );
+}
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent };

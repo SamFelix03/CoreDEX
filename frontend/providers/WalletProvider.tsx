@@ -12,7 +12,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       <QueryProvider>
         <RainbowKitProvider
           theme={darkTheme({
-            accentColor:          "#E6007A",
+            accentColor:          "#0041C1",
             accentColorForeground:"#ffffff",
             borderRadius:         "small",
             fontStack:            "system",

@@ -1,5 +1,5 @@
 "use client";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useAccount } from "wagmi";
@@ -16,8 +16,8 @@ function OrderRow({ orderId }: { orderId: bigint }) {
   if (isLoading || !order) {
     return (
       <tr>
-        <td colSpan={6} style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--muted)" }}>
-          Loading...
+        <td colSpan={6} className="px-4 py-3 text-sm text-muted-foreground">
+          Loading…
         </td>
       </tr>
     );
@@ -29,38 +29,32 @@ function OrderRow({ orderId }: { orderId: bigint }) {
   const isBuyer  = address?.toLowerCase() === order.buyer.toLowerCase();
 
   return (
-    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-      <td style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "var(--text)" }}>
-        #{String(order.orderId)}
-      </td>
-      <td style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--muted)" }}>
-        {String(order.regionId)}
-      </td>
-      <td style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--cyan)" }}>
-        {formatDOT(order.strikePriceDOT)} DOT
-      </td>
-      <td style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--muted)" }}>
-        {truncateAddress(order.seller)}
-      </td>
-      <td style={{ padding: "8px 12px" }}>
+    <tr className="border-b border-border transition-colors hover:bg-secondary/30">
+      <td className="px-4 py-3 text-sm text-foreground">#{String(order.orderId)}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{String(order.regionId)}</td>
+      <td className="px-4 py-3 text-sm text-primary">{formatDOT(order.strikePriceDOT)} DOT</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{truncateAddress(order.seller)}</td>
+      <td className="px-4 py-3">
         <Badge label={statusLabel} color={statusColor} />
       </td>
-      <td style={{ padding: "8px 12px", display: "flex", gap: 4 }}>
-        {order.status === 0 && !isSeller && (
-          <Button size="sm" onClick={() => matchOrder(order.orderId)} loading={matchPending}>
-            Match
-          </Button>
-        )}
-        {order.status === 0 && isSeller && (
-          <Button size="sm" variant="ghost" onClick={() => cancel(order.orderId)} loading={cancelPending}>
-            Cancel
-          </Button>
-        )}
-        {order.status === 1 && (isSeller || isBuyer) && (
-          <Button size="sm" variant="outline" onClick={() => settle(order.orderId)} loading={settlePending}>
-            Settle
-          </Button>
-        )}
+      <td className="px-4 py-3">
+        <div className="flex gap-2">
+          {order.status === 0 && !isSeller && (
+            <Button size="sm" onClick={() => matchOrder(order.orderId)} loading={matchPending}>
+              Match
+            </Button>
+          )}
+          {order.status === 0 && isSeller && (
+            <Button size="sm" variant="ghost" onClick={() => cancel(order.orderId)} loading={cancelPending}>
+              Cancel
+            </Button>
+          )}
+          {order.status === 1 && (isSeller || isBuyer) && (
+            <Button size="sm" variant="outline" onClick={() => settle(order.orderId)} loading={settlePending}>
+              Settle
+            </Button>
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -76,28 +70,31 @@ export function OrderList() {
   ].filter((v, i, a) => a.findIndex(x => x === v) === i);
 
   return (
-    <Card>
+    <Card className="animate-slide-in-up p-0 overflow-hidden">
       <CardHeader label="Your Forward Orders" />
       {allOrderIds.length === 0 ? (
-        <div style={{ padding: 24, textAlign: "center" }}>
-          <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "var(--muted)" }}>
+        <CardContent className="py-12 text-center">
+          <p className="text-sm text-muted-foreground">
             {address ? "No forward orders found" : "Connect wallet to view orders"}
           </p>
-        </div>
+        </CardContent>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Order", "Region", "Strike", "Seller", "Status", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "var(--muted)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "left" }}>
+              <tr className="border-b border-border bg-secondary/50">
+                {["Order", "Region", "Strike", "Seller", "Status", "Actions"].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                  >
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {allOrderIds.map(id => (
+              {allOrderIds.map((id) => (
                 <OrderRow key={String(id)} orderId={id} />
               ))}
             </tbody>

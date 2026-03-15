@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useVaultBorrow } from "@/hooks/useVault";
@@ -20,9 +20,9 @@ export function BorrowForm() {
   };
 
   return (
-    <Card>
+    <Card className="animate-slide-in-up">
       <CardHeader label="Borrow Regions" />
-      <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+      <CardContent className="flex flex-col gap-4">
         <Input
           label="Core Count"
           type="number"
@@ -37,28 +37,30 @@ export function BorrowForm() {
           value={durationBlocks}
           onChange={(e) => { reset(); setDurationBlocks(e.target.value); }}
         />
-
-        <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--muted)", lineHeight: 1.6 }}>
+        <p className="text-xs text-muted-foreground leading-relaxed">
           Borrow Coretime regions from the vault by paying a lending fee.
           Regions must be returned before the due block.
         </p>
-
         {error && (
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--red)", padding: "8px 12px", background: "rgba(255,68,68,0.1)", borderRadius: 3 }}>
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
             {(error as Error).message?.slice(0, 120)}
           </div>
         )}
-
         {isSuccess && (
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--green)", padding: "8px 12px", background: "rgba(0,255,136,0.1)", borderRadius: 3 }}>
+          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-xs text-green-400 animate-slide-in-up">
             Borrow successful!
           </div>
         )}
-
-        <Button variant="outline" onClick={handleBorrow} loading={isPending} disabled={!coreCount || !durationBlocks}>
+        <Button
+          variant="outline"
+          onClick={handleBorrow}
+          loading={isPending}
+          disabled={!coreCount || !durationBlocks}
+          className="w-full"
+        >
           Borrow
         </Button>
-      </div>
+      </CardContent>
     </Card>
   );
 }

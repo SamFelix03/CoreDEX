@@ -1,4 +1,5 @@
 "use client";
+
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useAccount } from "wagmi";
@@ -6,6 +7,61 @@ import { useForwardOrders } from "@/hooks/useForwardOrders";
 import { useOptionsData } from "@/hooks/useOptions";
 import { useVaultDeposits } from "@/hooks/useVault";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+
+function PositionCard({
+  href,
+  title,
+  badgeLabel,
+  badgeColor,
+  value,
+  sub,
+  delay,
+}: {
+  href: string;
+  title: string;
+  badgeLabel: string;
+  badgeColor: string;
+  value: number;
+  sub: string;
+  delay: string;
+}) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Link href={href} className="block">
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{ animationDelay: delay }}
+        className={cn(
+          "rounded-xl border border-border bg-card p-5 shadow-lg transition-all duration-500 animate-slide-in-up cursor-pointer",
+          hovered && "scale-[1.02] shadow-xl"
+        )}
+      >
+        <div className="flex items-start justify-between mb-3">
+          <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {title}
+          </h3>
+          <div
+            className={cn(
+              "size-6 rounded-full bg-primary/20 flex items-center justify-center transition-transform duration-300",
+              hovered && "rotate-45"
+            )}
+          >
+            <ArrowUpRight className="size-3.5 text-primary" />
+          </div>
+        </div>
+        <p className="text-2xl font-bold text-foreground mb-1">{value}</p>
+        <div className="flex items-center gap-2">
+          <Badge label={badgeLabel} color={badgeColor} />
+          <span className="text-xs text-muted-foreground">{sub}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export function UserPositions() {
   const { address } = useAccount();
@@ -17,8 +73,8 @@ export function UserPositions() {
     return (
       <Card>
         <CardHeader label="Your Positions" />
-        <div style={{ padding: 24, textAlign: "center" }}>
-          <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "var(--muted)" }}>
+        <div className="p-8 text-center animate-fade-in">
+          <p className="text-sm text-muted-foreground">
             Connect your wallet to view positions
           </p>
         </div>
@@ -26,63 +82,40 @@ export function UserPositions() {
     );
   }
 
+  const forwardsTotal = (sellerOrderIds?.length ?? 0) + (buyerOrderIds?.length ?? 0);
+  const optionsTotal = (writerOptionIds?.length ?? 0) + (holderOptionIds?.length ?? 0);
+
   return (
-    <Card>
+    <Card className="p-0 overflow-hidden">
       <CardHeader label="Your Positions" />
-      <div style={{ padding: 16, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-        {/* Forwards */}
-        <Link href="/forwards" style={{ textDecoration: "none" }}>
-          <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 3, padding: "14px 16px", cursor: "pointer", transition: "border-color 0.15s" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--muted)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                Forwards
-              </span>
-              <Badge label="Sell/Buy" color="var(--cyan)" />
-            </div>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 22, color: "var(--text)" }}>
-              {(sellerOrderIds?.length ?? 0) + (buyerOrderIds?.length ?? 0)}
-            </div>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--muted)", marginTop: 4 }}>
-              {sellerOrderIds?.length ?? 0} selling · {buyerOrderIds?.length ?? 0} buying
-            </div>
-          </div>
-        </Link>
-
-        {/* Options */}
-        <Link href="/options" style={{ textDecoration: "none" }}>
-          <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 3, padding: "14px 16px", cursor: "pointer", transition: "border-color 0.15s" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--muted)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                Options
-              </span>
-              <Badge label="Write/Hold" color="var(--pink)" />
-            </div>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 22, color: "var(--text)" }}>
-              {(writerOptionIds?.length ?? 0) + (holderOptionIds?.length ?? 0)}
-            </div>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--muted)", marginTop: 4 }}>
-              {writerOptionIds?.length ?? 0} written · {holderOptionIds?.length ?? 0} held
-            </div>
-          </div>
-        </Link>
-
-        {/* Vault */}
-        <Link href="/vault" style={{ textDecoration: "none" }}>
-          <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 3, padding: "14px 16px", cursor: "pointer", transition: "border-color 0.15s" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--muted)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                Vault
-              </span>
-              <Badge label="Deposits" color="var(--green)" />
-            </div>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 22, color: "var(--text)" }}>
-              {receiptIds?.length ?? 0}
-            </div>
-            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "var(--muted)", marginTop: 4 }}>
-              active deposits
-            </div>
-          </div>
-        </Link>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6">
+        <PositionCard
+          href="/forwards"
+          title="Forwards"
+          badgeLabel="Sell/Buy"
+          badgeColor="var(--cyan)"
+          value={forwardsTotal}
+          sub={`${sellerOrderIds?.length ?? 0} selling · ${buyerOrderIds?.length ?? 0} buying`}
+          delay="0ms"
+        />
+        <PositionCard
+          href="/options"
+          title="Options"
+          badgeLabel="Write/Hold"
+          badgeColor="var(--pink)"
+          value={optionsTotal}
+          sub={`${writerOptionIds?.length ?? 0} written · ${holderOptionIds?.length ?? 0} held`}
+          delay="100ms"
+        />
+        <PositionCard
+          href="/vault"
+          title="Vault"
+          badgeLabel="Deposits"
+          badgeColor="var(--green)"
+          value={receiptIds?.length ?? 0}
+          sub="active deposits"
+          delay="200ms"
+        />
       </div>
     </Card>
   );

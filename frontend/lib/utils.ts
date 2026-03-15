@@ -1,5 +1,11 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 import { formatUnits, parseUnits } from "viem";
 import { DOT_DECIMALS } from "@/constants";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 // ─── DOT Formatting ─────────────────────────────────────────────────────────
 

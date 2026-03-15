@@ -1,5 +1,5 @@
 "use client";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useAccount } from "wagmi";
@@ -15,8 +15,8 @@ function OptionRow({ optionId }: { optionId: bigint }) {
   if (isLoading || !option) {
     return (
       <tr>
-        <td colSpan={7} style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--muted)" }}>
-          Loading...
+        <td colSpan={7} className="px-4 py-3 text-sm text-muted-foreground">
+          Loading…
         </td>
       </tr>
     );
@@ -28,39 +28,33 @@ function OptionRow({ optionId }: { optionId: bigint }) {
   const isHolder = address?.toLowerCase() === option.holder.toLowerCase();
 
   return (
-    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-      <td style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "var(--text)" }}>
-        #{String(option.optionId)}
-      </td>
-      <td style={{ padding: "8px 12px" }}>
+    <tr className="border-b border-border transition-colors hover:bg-secondary/30">
+      <td className="px-4 py-3 text-sm text-foreground">#{String(option.optionId)}</td>
+      <td className="px-4 py-3">
         <Badge
           label={option.optionType === 0 ? "Call" : "Put"}
           color={option.optionType === 0 ? "var(--cyan)" : "var(--pink)"}
         />
       </td>
-      <td style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--muted)" }}>
-        {String(option.coretimeRegion)}
-      </td>
-      <td style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--cyan)" }}>
-        {formatDOT(option.strikePriceDOT)} DOT
-      </td>
-      <td style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--pink)" }}>
-        {formatDOT(option.premiumDOT)} DOT
-      </td>
-      <td style={{ padding: "8px 12px" }}>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{String(option.coretimeRegion)}</td>
+      <td className="px-4 py-3 text-sm text-primary">{formatDOT(option.strikePriceDOT)} DOT</td>
+      <td className="px-4 py-3 text-sm text-primary">{formatDOT(option.premiumDOT)} DOT</td>
+      <td className="px-4 py-3">
         <Badge label={statusLabel} color={statusColor} />
       </td>
-      <td style={{ padding: "8px 12px", display: "flex", gap: 4 }}>
-        {option.status === 0 && !isWriter && (
-          <Button size="sm" onClick={() => buyOption(option.optionId)} loading={buyPending}>
-            Buy
-          </Button>
-        )}
-        {option.status === 1 && isHolder && (
-          <Button size="sm" variant="outline" onClick={() => exercise(option.optionId)} loading={exercisePending}>
-            Exercise
-          </Button>
-        )}
+      <td className="px-4 py-3">
+        <div className="flex gap-2">
+          {option.status === 0 && !isWriter && (
+            <Button size="sm" onClick={() => buyOption(option.optionId)} loading={buyPending}>
+              Buy
+            </Button>
+          )}
+          {option.status === 1 && isHolder && (
+            <Button size="sm" variant="outline" onClick={() => exercise(option.optionId)} loading={exercisePending}>
+              Exercise
+            </Button>
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -76,28 +70,28 @@ export function OptionList() {
   ].filter((v, i, a) => a.findIndex(x => x === v) === i);
 
   return (
-    <Card>
+    <Card className="animate-slide-in-up p-0 overflow-hidden">
       <CardHeader label="Your Options" />
       {allOptionIds.length === 0 ? (
-        <div style={{ padding: 24, textAlign: "center" }}>
-          <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12, color: "var(--muted)" }}>
+        <CardContent className="py-12 text-center">
+          <p className="text-sm text-muted-foreground">
             {address ? "No options found" : "Connect wallet to view options"}
           </p>
-        </div>
+        </CardContent>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["Option", "Type", "Region", "Strike", "Premium", "Status", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "8px 12px", fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "var(--muted)", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "left" }}>
+              <tr className="border-b border-border bg-secondary/50">
+                {["Option", "Type", "Region", "Strike", "Premium", "Status", "Actions"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {allOptionIds.map(id => (
+              {allOptionIds.map((id) => (
                 <OptionRow key={String(id)} optionId={id} />
               ))}
             </tbody>

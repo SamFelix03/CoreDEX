@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useCreateAsk } from "@/hooks/useForwardOrders";
@@ -26,9 +26,9 @@ export function CreateAskForm() {
   };
 
   return (
-    <Card>
+    <Card className="animate-slide-in-up">
       <CardHeader label="Create Forward Ask" />
-      <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+      <CardContent className="flex flex-col gap-4">
         <Input
           label="Region ID"
           type="number"
@@ -51,27 +51,25 @@ export function CreateAskForm() {
           value={deliveryBlock}
           onChange={(e) => { reset(); setDeliveryBlock(e.target.value); }}
         />
-
         {error && (
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--red)", padding: "8px 12px", background: "rgba(255,68,68,0.1)", borderRadius: 3 }}>
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
             {(error as Error).message?.slice(0, 120)}
           </div>
         )}
-
         {isSuccess && (
-          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "var(--green)", padding: "8px 12px", background: "rgba(0,255,136,0.1)", borderRadius: 3 }}>
+          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-xs text-green-400 animate-slide-in-up">
             Forward ask created successfully!
           </div>
         )}
-
         <Button
           onClick={handleSubmit}
           loading={isPending}
           disabled={!regionId || !strikePrice || !deliveryBlock}
+          className="w-full"
         >
           Create Ask
         </Button>
-      </div>
+      </CardContent>
     </Card>
   );
 }
