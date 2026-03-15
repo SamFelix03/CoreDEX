@@ -131,3 +131,25 @@ export function useClaimYield() {
 
   return { claimYield, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
 }
+
+export function useReturnLoan() {
+  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
+    hash,
+    query: { enabled: !!hash },
+  });
+
+  const returnLoan = useCallback(
+    async (loanId: bigint) => {
+      return writeContractAsync({
+        ...yieldVaultContract,
+        functionName: "returnLoan",
+        args: [loanId],
+      });
+    },
+    [writeContractAsync]
+  );
+
+  return { returnLoan, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+}
