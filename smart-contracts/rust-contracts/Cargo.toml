@@ -1,0 +1,38 @@
+[package]
+name = "coredex-pvm-mocks"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Each mock is a separate binary — deployed as its own PVM contract
+[[bin]]
+name = "coretime_oracle"
+path = "src/coretime_oracle.rs"
+
+[[bin]]
+name = "pricing_module"
+path = "src/pricing_module.rs"
+
+[[bin]]
+name = "coretime_nft"
+path = "src/coretime_nft.rs"
+
+[[bin]]
+name = "mock_assets"
+path = "src/mock_assets.rs"
+
+[dependencies]
+polkavm-derive = "0.25.0"
+
+[dependencies.uapi]
+package = "pallet-revive-uapi"
+git = "https://github.com/paritytech/polkadot-sdk.git"
+rev = "187cddde3799b5761c8036aaf137b93ba09fa526"
+default-features = false
+features = ["unstable-hostfn"]
+
+[profile.release]
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+panic = "abort"

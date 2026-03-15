@@ -1,0 +1,15 @@
+{
+  "name": "coredex-pvm-mocks",
+  "version": "1.0.0",
+  "description": "Rust PVM mock contracts for CoreDEX — compiled to RISC-V, deployed on PVM",
+  "scripts": {
+    "build": "npm run build:all && npm run link:all",
+    "build:all": "cargo build --release",
+    "link:all": "npm run link:oracle && npm run link:pricing && npm run link:nft && npm run link:assets",
+    "link:oracle": "polkatool link --strip target/riscv64emac-unknown-none-polkavm/release/coretime_oracle -o coretime_oracle.polkavm",
+    "link:pricing": "polkatool link --strip target/riscv64emac-unknown-none-polkavm/release/pricing_module -o pricing_module.polkavm",
+    "link:nft": "polkatool link --strip target/riscv64emac-unknown-none-polkavm/release/coretime_nft -o coretime_nft.polkavm",
+    "link:assets": "polkatool link --strip target/riscv64emac-unknown-none-polkavm/release/mock_assets -o mock_assets.polkavm",
+    "clean": "cargo clean && rm -f *.polkavm"
+  }
+}
