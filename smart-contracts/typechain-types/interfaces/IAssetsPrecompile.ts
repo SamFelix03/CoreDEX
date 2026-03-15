@@ -28,6 +28,7 @@ export interface IAssetsPrecompileInterface extends Interface {
       | "existentialDeposit"
       | "totalIssuance"
       | "transfer"
+      | "transferFrom"
   ): FunctionFragment;
 
   encodeFunctionData(
@@ -46,6 +47,10 @@ export interface IAssetsPrecompileInterface extends Interface {
     functionFragment: "transfer",
     values: [AddressLike, BigNumberish]
   ): string;
+  encodeFunctionData(
+    functionFragment: "transferFrom",
+    values: [AddressLike, AddressLike, BigNumberish]
+  ): string;
 
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(
@@ -57,6 +62,10 @@ export interface IAssetsPrecompileInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "transfer", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "transferFrom",
+    data: BytesLike
+  ): Result;
 }
 
 export interface IAssetsPrecompile extends BaseContract {
@@ -114,6 +123,12 @@ export interface IAssetsPrecompile extends BaseContract {
     "nonpayable"
   >;
 
+  transferFrom: TypedContractMethod<
+    [from: AddressLike, to: AddressLike, amount: BigNumberish],
+    [boolean],
+    "nonpayable"
+  >;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
@@ -131,6 +146,13 @@ export interface IAssetsPrecompile extends BaseContract {
     nameOrSignature: "transfer"
   ): TypedContractMethod<
     [to: AddressLike, amount: BigNumberish],
+    [boolean],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "transferFrom"
+  ): TypedContractMethod<
+    [from: AddressLike, to: AddressLike, amount: BigNumberish],
     [boolean],
     "nonpayable"
   >;

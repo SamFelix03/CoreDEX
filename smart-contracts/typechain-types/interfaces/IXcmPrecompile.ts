@@ -8,7 +8,6 @@ import type {
   FunctionFragment,
   Result,
   Interface,
-  AddressLike,
   ContractRunner,
   ContractMethod,
   Listener,
@@ -21,52 +20,28 @@ import type {
   TypedContractMethod,
 } from "../common";
 
-export declare namespace IXcmPrecompile {
-  export type WeightStruct = { refTime: BigNumberish; proofSize: BigNumberish };
-
-  export type WeightStructOutput = [refTime: bigint, proofSize: bigint] & {
-    refTime: bigint;
-    proofSize: bigint;
-  };
-
-  export type OutcomeStruct = { success: boolean; error: BytesLike };
-
-  export type OutcomeStructOutput = [success: boolean, error: string] & {
-    success: boolean;
-    error: string;
-  };
-}
-
 export interface IXcmPrecompileInterface extends Interface {
   getFunction(
-    nameOrSignature: "execute" | "remoteTransact" | "sendXcm" | "teleportDOT"
+    nameOrSignature: "execute" | "send" | "weighMessage"
   ): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "execute",
-    values: [BytesLike, IXcmPrecompile.WeightStruct]
+    values: [BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "remoteTransact",
-    values: [BigNumberish, BytesLike, BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "sendXcm",
+    functionFragment: "send",
     values: [BytesLike, BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: "teleportDOT",
-    values: [BigNumberish, AddressLike, BigNumberish, BigNumberish]
+    functionFragment: "weighMessage",
+    values: [BytesLike]
   ): string;
 
   decodeFunctionResult(functionFragment: "execute", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "send", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "remoteTransact",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "sendXcm", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "teleportDOT",
+    functionFragment: "weighMessage",
     data: BytesLike
   ): Result;
 }
@@ -115,37 +90,18 @@ export interface IXcmPrecompile extends BaseContract {
   ): Promise<this>;
 
   execute: TypedContractMethod<
-    [xcmProgram: BytesLike, maxWeight: IXcmPrecompile.WeightStruct],
-    [IXcmPrecompile.OutcomeStructOutput],
+    [message: BytesLike, maxWeight: BigNumberish],
+    [boolean],
     "nonpayable"
   >;
 
-  remoteTransact: TypedContractMethod<
-    [
-      destinationParaId: BigNumberish,
-      call: BytesLike,
-      weightLimit: BigNumberish
-    ],
-    [void],
-    "nonpayable"
-  >;
-
-  sendXcm: TypedContractMethod<
-    [dest: BytesLike, xcmProgram: BytesLike],
+  send: TypedContractMethod<
+    [dest: BytesLike, message: BytesLike],
     [string],
     "nonpayable"
   >;
 
-  teleportDOT: TypedContractMethod<
-    [
-      destinationParaId: BigNumberish,
-      beneficiary: AddressLike,
-      amount: BigNumberish,
-      weightLimit: BigNumberish
-    ],
-    [void],
-    "nonpayable"
-  >;
+  weighMessage: TypedContractMethod<[message: BytesLike], [bigint], "view">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
@@ -154,40 +110,20 @@ export interface IXcmPrecompile extends BaseContract {
   getFunction(
     nameOrSignature: "execute"
   ): TypedContractMethod<
-    [xcmProgram: BytesLike, maxWeight: IXcmPrecompile.WeightStruct],
-    [IXcmPrecompile.OutcomeStructOutput],
+    [message: BytesLike, maxWeight: BigNumberish],
+    [boolean],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "remoteTransact"
+    nameOrSignature: "send"
   ): TypedContractMethod<
-    [
-      destinationParaId: BigNumberish,
-      call: BytesLike,
-      weightLimit: BigNumberish
-    ],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "sendXcm"
-  ): TypedContractMethod<
-    [dest: BytesLike, xcmProgram: BytesLike],
+    [dest: BytesLike, message: BytesLike],
     [string],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "teleportDOT"
-  ): TypedContractMethod<
-    [
-      destinationParaId: BigNumberish,
-      beneficiary: AddressLike,
-      amount: BigNumberish,
-      weightLimit: BigNumberish
-    ],
-    [void],
-    "nonpayable"
-  >;
+    nameOrSignature: "weighMessage"
+  ): TypedContractMethod<[message: BytesLike], [bigint], "view">;
 
   filters: {};
 }

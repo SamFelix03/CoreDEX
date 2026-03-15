@@ -8,6 +8,7 @@ node_modules/
 !.yarn/releases
 !.yarn/versions
 
+polkadot-hub-demo-cross-vm-main
 # Build outputs
 dist/
 build/

@@ -13,70 +13,23 @@ const _abi = [
     inputs: [
       {
         internalType: "bytes",
-        name: "xcmProgram",
+        name: "message",
         type: "bytes",
       },
       {
-        components: [
-          {
-            internalType: "uint64",
-            name: "refTime",
-            type: "uint64",
-          },
-          {
-            internalType: "uint64",
-            name: "proofSize",
-            type: "uint64",
-          },
-        ],
-        internalType: "struct IXcmPrecompile.Weight",
+        internalType: "uint64",
         name: "maxWeight",
-        type: "tuple",
+        type: "uint64",
       },
     ],
     name: "execute",
     outputs: [
       {
-        components: [
-          {
-            internalType: "bool",
-            name: "success",
-            type: "bool",
-          },
-          {
-            internalType: "bytes",
-            name: "error",
-            type: "bytes",
-          },
-        ],
-        internalType: "struct IXcmPrecompile.Outcome",
-        name: "outcome",
-        type: "tuple",
+        internalType: "bool",
+        name: "success",
+        type: "bool",
       },
     ],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint32",
-        name: "destinationParaId",
-        type: "uint32",
-      },
-      {
-        internalType: "bytes",
-        name: "call",
-        type: "bytes",
-      },
-      {
-        internalType: "uint64",
-        name: "weightLimit",
-        type: "uint64",
-      },
-    ],
-    name: "remoteTransact",
-    outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
@@ -89,15 +42,15 @@ const _abi = [
       },
       {
         internalType: "bytes",
-        name: "xcmProgram",
+        name: "message",
         type: "bytes",
       },
     ],
-    name: "sendXcm",
+    name: "send",
     outputs: [
       {
         internalType: "bytes32",
-        name: "messageHash",
+        name: "messageId",
         type: "bytes32",
       },
     ],
@@ -107,29 +60,20 @@ const _abi = [
   {
     inputs: [
       {
-        internalType: "uint32",
-        name: "destinationParaId",
-        type: "uint32",
+        internalType: "bytes",
+        name: "message",
+        type: "bytes",
       },
-      {
-        internalType: "address",
-        name: "beneficiary",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
+    ],
+    name: "weighMessage",
+    outputs: [
       {
         internalType: "uint64",
-        name: "weightLimit",
+        name: "weight",
         type: "uint64",
       },
     ],
-    name: "teleportDOT",
-    outputs: [],
-    stateMutability: "nonpayable",
+    stateMutability: "view",
     type: "function",
   },
 ] as const;
