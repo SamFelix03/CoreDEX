@@ -4,13 +4,15 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "build:rust": "cd rust-contracts && npm run build",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:assethub": "hardhat run scripts/deploy.ts --network assetHub",
     "deploy:mainnet": "hardhat run scripts/deploy.ts --network assetHubMainnet",
     "deploy:testnet": "hardhat run scripts/deploy.ts --network polkadotTestNet",
+    "deploy:pvm": "hardhat run scripts/deploy-pvm-mocks.ts --network localhost",
+    "deploy:pvm:testnet": "hardhat run scripts/deploy-pvm-mocks.ts --network polkadotTestNet",
     "simulate": "hardhat run scripts/simulate-coredex.ts --network localhost",
-    "simulate:fork": "hardhat run scripts/simulate-coredex.ts --network localhost",
-    "chopsticks": "npx @acala-network/chopsticks --config chopsticks.yml"
+    "simulate:fork": "hardhat run scripts/simulate-coredex.ts --network localhost"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
