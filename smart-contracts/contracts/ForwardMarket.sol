@@ -36,7 +36,7 @@ contract ForwardMarket {
 
     /// @notice Assets Precompile address on Asset Hub.
     address public constant ASSETS_PRECOMPILE =
-        0x0000000000000000000000000000000000000806;
+        0xc82e04234549D48b961d8Cb3F3c60609dDF3F006; // MockAssets PVM contract
 
     /// @notice Grace period after delivery block before order can be expired (in blocks).
     uint32 public constant GRACE_PERIOD = 14_400; // ~24 hours at 6s blocks
@@ -196,9 +196,9 @@ contract ForwardMarket {
         buyerOrders[msg.sender].push(orderId);
 
         // --- INTERACT ---
-        // Transfer DOT from buyer into escrow
+        // Transfer DOT from buyer into escrow (using transferFrom since contract is calling)
         bool transferred = IAssetsPrecompile(ASSETS_PRECOMPILE)
-            .transfer(address(this), uint256(order.strikePriceDOT));
+            .transferFrom(msg.sender, address(this), uint256(order.strikePriceDOT));
         if (!transferred) revert Errors.DOTTransferFailed(uint256(order.strikePriceDOT));
 
         // Track margin in ledger

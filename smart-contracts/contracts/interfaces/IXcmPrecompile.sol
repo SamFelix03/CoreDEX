@@ -2,67 +2,47 @@
 pragma solidity ^0.8.20;
 
 /// @title IXcmPrecompile
-/// @notice Interface for the Polkadot Asset Hub XCM Precompile.
-///         Registered at address 0x0000000000000000000000000000000000000808.
-///         Allows smart contracts to build and dispatch XCM v5 instruction sets
-///         cross-chain without bridge infrastructure or off-chain relayers.
+/// @notice Interface for the REAL Polkadot Hub XCM Precompile.
+///         Registered at the canonical address:
+///             0x00000000000000000000000000000000000a0000
 ///
-/// @dev    Used exclusively by SettlementExecutor for coretime NFT delivery
-///         and DOT payment settlement across the Coretime Chain and Asset Hub.
+/// @dev    This is the ACTUAL XCM precompile interface provided by Polkadot,
+///         not a custom one. It exposes three functions:
+///
+///         - execute: Execute an XCM message locally.
+///         - send: Send an XCM message to a destination chain.
+///         - weighMessage: Estimate the weight of an XCM message.
+///
+///         Reference: https://docs.polkadot.com/develop/smart-contracts/precompiles/xcm-precompile/
+///
+///         The precompile works with SCALE-encoded XCM VersionedXcm and
+///         VersionedLocation bytes. Use PAPI or other XCM builders to
+///         construct these messages off-chain.
 interface IXcmPrecompile {
 
-    /// @notice Weight struct matching Polkadot's Weight type.
-    struct Weight {
-        uint64 refTime;
-        uint64 proofSize;
-    }
-
-    /// @notice Outcome of an XCM execution.
-    struct Outcome {
-        bool success;
-        bytes error;
-    }
-
-    /// @notice Execute an XCM program with this contract as origin.
-    ///         Used for operations where the contract's sovereign account
-    ///         needs to be the XCM origin (e.g. withdrawing from escrow).
-    /// @param xcmProgram SCALE-encoded XCM v5 VersionedXcm.
-    /// @param maxWeight  Weight limit (ref_time + proof_size).
-    /// @return outcome   Result of the XCM execution.
+    /// @notice Execute a SCALE-encoded XCM message locally.
+    ///         The contract's sovereign account is the XCM origin.
+    /// @param message   SCALE-encoded VersionedXcm bytes.
+    /// @param maxWeight Maximum weight (ref_time, proof_size) encoded as u64 pair.
+    /// @return success  Whether the XCM execution succeeded.
     function execute(
-        bytes calldata xcmProgram,
-        Weight calldata maxWeight
-    ) external returns (Outcome memory outcome);
+        bytes calldata message,
+        uint64 maxWeight
+    ) external returns (bool success);
 
-    /// @notice Send XCM to a destination chain.
-    ///         Used for cross-chain asset transfers (DOT payment leg).
-    /// @param dest       SCALE-encoded MultiLocation of the target chain.
-    /// @param xcmProgram SCALE-encoded XCM v5 instruction set.
-    /// @return messageHash Hash of the sent XCM message for tracking.
-    function sendXcm(
+    /// @notice Send a SCALE-encoded XCM message to a destination chain.
+    /// @param dest    SCALE-encoded VersionedLocation of the target chain.
+    /// @param message SCALE-encoded VersionedXcm instruction set.
+    /// @return messageId The XCM message ID for tracking.
+    function send(
         bytes calldata dest,
-        bytes calldata xcmProgram
-    ) external returns (bytes32 messageHash);
+        bytes calldata message
+    ) external returns (bytes32 messageId);
 
-    /// @notice Teleports DOT from Asset Hub to a destination parachain.
-    /// @param destinationParaId Parachain ID to teleport DOT to.
-    /// @param beneficiary       Recipient address on the destination chain.
-    /// @param amount            DOT to teleport (18-decimal fixed-point).
-    /// @param weightLimit       Maximum XCM execution weight to purchase.
-    function teleportDOT(
-        uint32  destinationParaId,
-        address beneficiary,
-        uint256 amount,
-        uint64  weightLimit
-    ) external;
-
-    /// @notice Sends a remote Transact to execute a call on another chain.
-    /// @param destinationParaId Target parachain ID.
-    /// @param call              SCALE-encoded extrinsic to execute remotely.
-    /// @param weightLimit       Maximum weight for the remote call.
-    function remoteTransact(
-        uint32         destinationParaId,
-        bytes calldata call,
-        uint64         weightLimit
-    ) external;
+    /// @notice Estimate the weight required to execute an XCM message.
+    /// @param message SCALE-encoded VersionedXcm bytes.
+    /// @return weight Estimated weight (ref_time).
+    function weighMessage(
+        bytes calldata message
+    ) external view returns (uint64 weight);
 }

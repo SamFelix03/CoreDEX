@@ -24,6 +24,15 @@ interface IAssetsPrecompile {
         external
         returns (bool success);
 
+    /// @notice Transfers DOT from one account to another (requires approval).
+    /// @param from   Source account address.
+    /// @param to     Recipient address.
+    /// @param amount Amount to transfer (18-decimal fixed-point).
+    /// @return success True if transfer succeeded.
+    function transferFrom(address from, address to, uint256 amount)
+        external
+        returns (bool success);
+
     /// @notice Returns the total issuance of DOT on Asset Hub.
     /// @return totalIssuance Total DOT supply (18-decimal fixed-point).
     function totalIssuance() external view returns (uint256 totalIssuance);

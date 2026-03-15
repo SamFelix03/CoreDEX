@@ -36,7 +36,7 @@ contract OptionsEngine {
     // -------------------------------------------------------------------------
 
     address public constant ASSETS_PRECOMPILE =
-        0x0000000000000000000000000000000000000806;
+        0xc82e04234549D48b961d8Cb3F3c60609dDF3F006; // MockAssets PVM contract
 
     uint8 public constant OPTION_CALL = 0;
     uint8 public constant OPTION_PUT  = 1;
@@ -198,9 +198,9 @@ contract OptionsEngine {
         writerOptions[msg.sender].push(optionId);
 
         // --- INTERACT ---
-        // Escrow DOT equal to strike price from writer
+        // Escrow DOT equal to strike price from writer (using transferFrom since contract is calling)
         bool transferred = IAssetsPrecompile(ASSETS_PRECOMPILE)
-            .transfer(address(this), uint256(strike));
+            .transferFrom(msg.sender, address(this), uint256(strike));
         if (!transferred) revert Errors.DOTTransferFailed(uint256(strike));
 
         CoretimeLedger ledger = CoretimeLedger(registry.resolve(KEY_LEDGER));
@@ -231,14 +231,9 @@ contract OptionsEngine {
         holderOptions[msg.sender].push(optionId);
 
         // --- INTERACT ---
-        // Transfer premium from holder to writer
-        bool premiumPaid = IAssetsPrecompile(ASSETS_PRECOMPILE)
-            .transfer(address(this), uint256(opt.premiumDOT));
-        if (!premiumPaid) revert Errors.DOTTransferFailed(uint256(opt.premiumDOT));
-
-        // Forward premium to writer
+        // Transfer premium from holder directly to writer (using transferFrom)
         bool premiumSent = IAssetsPrecompile(ASSETS_PRECOMPILE)
-            .transfer(opt.writer, uint256(opt.premiumDOT));
+            .transferFrom(msg.sender, opt.writer, uint256(opt.premiumDOT));
         if (!premiumSent) revert Errors.DOTTransferFailed(uint256(opt.premiumDOT));
 
         CoretimeLedger ledger = CoretimeLedger(registry.resolve(KEY_LEDGER));
@@ -274,9 +269,9 @@ contract OptionsEngine {
 
         if (opt.optionType == OPTION_CALL) {
             // --- INTERACT: Call exercise ---
-            // Holder pays strike price in DOT
+            // Holder pays strike price in DOT (using transferFrom since contract is calling)
             bool dotPaid = IAssetsPrecompile(ASSETS_PRECOMPILE)
-                .transfer(address(this), uint256(opt.strikePriceDOT));
+                .transferFrom(msg.sender, address(this), uint256(opt.strikePriceDOT));
             if (!dotPaid) revert Errors.DOTTransferFailed(uint256(opt.strikePriceDOT));
 
             // Transfer DOT to writer

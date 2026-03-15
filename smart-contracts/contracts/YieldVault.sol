@@ -44,7 +44,7 @@ contract YieldVault {
 
     /// @notice Assets Precompile address on Asset Hub.
     address public constant ASSETS_PRECOMPILE =
-        0x0000000000000000000000000000000000000806;
+        0xc82e04234549D48b961d8Cb3F3c60609dDF3F006; // MockAssets PVM contract
 
     /// @notice Base lending rate in DOT planck per core-block (18 decimals).
     ///         0.000001 DOT per core-block at zero utilisation.
@@ -298,9 +298,9 @@ contract YieldVault {
         currentEpochFees += fee;
 
         // --- INTERACT ---
-        // Collect fee from borrower
+        // Collect fee from borrower (using transferFrom since contract is calling)
         bool feePaid_ = IAssetsPrecompile(ASSETS_PRECOMPILE)
-            .transfer(address(this), uint256(fee));
+            .transferFrom(msg.sender, address(this), uint256(fee));
         if (!feePaid_) revert Errors.DOTTransferFailed(uint256(fee));
 
         emit Events.RegionLent(assignedRegion, msg.sender, durationBlocks, fee);

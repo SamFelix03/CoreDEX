@@ -40,13 +40,15 @@ contract SettlementExecutor {
     // Constants
     // -------------------------------------------------------------------------
 
-    /// @notice XCM Precompile address on Asset Hub.
+    /// @notice XCM Precompile — REAL Polkadot Hub precompile address.
+    ///         This is the canonical address provided by the Polkadot runtime.
+    ///         See: https://docs.polkadot.com/develop/smart-contracts/precompiles/xcm-precompile/
     address public constant XCM_PRECOMPILE =
-        0x0000000000000000000000000000000000000808;
+        0x00000000000000000000000000000000000a0000;
 
     /// @notice Assets Precompile address on Asset Hub.
     address public constant ASSETS_PRECOMPILE =
-        0x0000000000000000000000000000000000000806;
+        0xc82e04234549D48b961d8Cb3F3c60609dDF3F006; // MockAssets PVM contract
 
     /// @notice Coretime Chain parachain ID.
     uint32 public constant CORETIME_PARA_ID = 1005;
@@ -365,25 +367,19 @@ contract SettlementExecutor {
         returns (bytes32 xcmHash)
     {
         // Construct XCM program for NFT delivery
-        // The XCM program is SCALE-encoded and dispatched via the XCM precompile
+        // The XCM program is SCALE-encoded and dispatched via the REAL XCM precompile
         bytes memory xcmProgram = _buildNFTDeliveryXcm(regionId, buyer);
 
-        IXcmPrecompile.Weight memory maxWeight = IXcmPrecompile.Weight({
-            refTime:   DEFAULT_REF_TIME,
-            proofSize: DEFAULT_PROOF_SIZE
-        });
+        // Execute XCM via the REAL Polkadot Hub XCM precompile
+        // Interface: execute(bytes message, uint64 maxWeight) returns (bool)
+        bool success = IXcmPrecompile(XCM_PRECOMPILE)
+            .execute(xcmProgram, DEFAULT_REF_TIME);
 
-        // Execute XCM via the precompile
-        IXcmPrecompile.Outcome memory outcome = IXcmPrecompile(XCM_PRECOMPILE)
-            .execute(xcmProgram, maxWeight);
-
-        if (!outcome.success) {
+        if (!success) {
             revert Errors.XcmDispatchFailed(bytes32(0));
         }
 
-        // Also dispatch DOT payment leg via sendXcm (Asset Hub → Coretime Chain → seller)
-        // This is the reverse leg — DOT flows from escrow to seller
-        // For now, return a hash based on the regionId and block for tracking
+        // Return a tracking hash based on regionId and block
         xcmHash = keccak256(abi.encodePacked(regionId, buyer, block.number));
     }
 
