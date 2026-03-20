@@ -27,6 +27,44 @@ export function formatDOTCompact(value: bigint): string {
   return num.toFixed(2);
 }
 
+// ─── Gwei Formatting ─────────────────────────────────────────────────────────
+//
+// `marginBalance` is treated as a raw integer "gwei" value in the UI.
+// We avoid JS `Number` math here so very large on-chain values don't overflow.
+export function formatGweiWithCommas(value: bigint): string {
+  const sign = value < 0n ? "-" : "";
+  const abs = value < 0n ? -value : value;
+  const s = abs.toString();
+  const withCommas = s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return sign + withCommas;
+}
+
+export function formatGweiCompact(value: bigint, fractionDigits = 2): string {
+  const sign = value < 0n ? "-" : "";
+  const abs = value < 0n ? -value : value;
+  if (abs === 0n) return "0";
+
+  const s = abs.toString();
+  const digits = s.length;
+
+  // 10^3 buckets.
+  const suffixes = ["", "K", "M", "B", "T", "P", "E"] as const;
+  const groups = Math.floor((digits - 1) / 3);
+  if (groups <= 0) return formatGweiWithCommas(value);
+
+  const suffix = suffixes[Math.min(groups, suffixes.length - 1)];
+  const firstChunkLen = digits - groups * 3; // 1..3
+  const firstChunk = s.slice(0, firstChunkLen);
+  const remainderDigits = s.slice(firstChunkLen);
+
+  const frac = fractionDigits > 0 ? remainderDigits.slice(0, fractionDigits) : "";
+  if (!frac || /^0+$/.test(frac)) return sign + firstChunk + suffix;
+
+  // Trim trailing zeros from truncated fraction for cleaner output.
+  const fracTrimmed = frac.replace(/0+$/, "");
+  return sign + firstChunk + "." + fracTrimmed + suffix;
+}
+
 export function parseDOT(value: string): bigint {
   try { return parseUnits(value, DOT_DECIMALS); }
   catch { return 0n; }

@@ -7,8 +7,7 @@ import { useProtocolStatus } from "@/hooks/useProtocolStatus";
 import { useVaultStats } from "@/hooks/useVault";
 import { useLedgerStats } from "@/hooks/useLedger";
 import { useAccount } from "wagmi";
-import { truncateAddress } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { cn, formatGweiCompact, formatGweiWithCommas, truncateAddress } from "@/lib/utils";
 import { useState } from "react";
 
 const statsConfig = [
@@ -30,6 +29,9 @@ export function ProtocolOverview() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const isLoading = statusLoading || vaultLoading || ledgerLoading;
 
+  const compactYourMargin = isLoading ? "" : formatGweiCompact(marginBalance);
+  const fullYourMargin = isLoading ? "" : formatGweiWithCommas(marginBalance);
+
   const values: Record<string, string> = {
     version: isLoading ? "…" : String(version ?? 0),
     governance: isLoading ? "…" : truncateAddress(governance ?? ""),
@@ -38,7 +40,7 @@ export function ProtocolOverview() {
     vaultLent: isLoading ? "…" : String(stats?.totalLent ?? 0),
     availableRegions: isLoading ? "…" : String(stats?.availableRegions ?? 0),
     yourPositions: isLoading ? "…" : String(openPositionCount),
-    yourMargin: isLoading ? "…" : String(marginBalance) + " wei",
+    yourMargin: isLoading ? "…" : `${compactYourMargin} gwei`,
   };
 
   return (
@@ -89,7 +91,16 @@ export function ProtocolOverview() {
                   />
                 </div>
               </div>
-              <p className="text-2xl font-bold mb-1">{values[stat.key]}</p>
+              <p
+                className="text-2xl font-bold mb-1 tabular-nums min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+                title={
+                  stat.key === "yourMargin" && !isLoading
+                    ? `${fullYourMargin} gwei`
+                    : undefined
+                }
+              >
+                {values[stat.key]}
+              </p>
               <div className="flex items-center gap-1.5 text-xs opacity-80">
                 <TrendingUp className="size-3" />
                 <span>Protocol stats</span>
