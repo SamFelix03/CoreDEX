@@ -8,36 +8,60 @@ import { uint32Arg } from "@/lib/utils";
 import { parseForwardOrderRead } from "@/lib/decodeEvmStructs";
 import { useHubTransactionReceipt } from "@/hooks/useHubTransactionReceipt";
 
-/** Avoid TanStack Query mutation state collisions when several `useWriteContract` hooks mount in one component (e.g. OrderRow). */
-const WM = (key: string) =>
-  ({
-    mutation: { mutationKey: ["writeContract", "ForwardMarket", key] as const },
-  }) as const;
+/**
+ * Viem needs `functionName` + `args` correlated; a generic single `simulateContract` call does not narrow.
+ * Discriminated union + switch gives a well-typed simulate per write.
+ */
+type SimulateForwardMarketWrite =
+  | { functionName: "createAsk"; args: readonly [bigint, bigint, number] }
+  | { functionName: "matchOrder"; args: readonly [bigint] }
+  | { functionName: "settle"; args: readonly [bigint] }
+  | { functionName: "cancel"; args: readonly [bigint] };
 
-/** Args tuples must match `FORWARD_MARKET_ABI` so `simulateContract` infers correctly. */
-type ForwardMarketWriteArgs = {
-  createAsk: readonly [bigint, bigint, number];
-  matchOrder: readonly [bigint];
-  settle: readonly [bigint];
-  cancel: readonly [bigint];
-};
-
-async function simulateForwardWrite<N extends keyof ForwardMarketWriteArgs>(
+async function simulateForwardWrite(
   publicClient: ReturnType<typeof usePublicClient>,
   address: `0x${string}`,
-  functionName: N,
-  args: ForwardMarketWriteArgs[N]
+  call: SimulateForwardMarketWrite
 ) {
   if (!publicClient) {
     throw new Error("No RPC client for Polkadot Hub — cannot simulate transaction");
   }
-  await publicClient.simulateContract({
+  const base = {
     address: forwardMarketContract.address,
     abi: forwardMarketContract.abi,
-    functionName,
-    args,
     account: address,
-  });
+  } as const;
+
+  switch (call.functionName) {
+    case "createAsk":
+      await publicClient.simulateContract({
+        ...base,
+        functionName: "createAsk",
+        args: call.args,
+      });
+      break;
+    case "matchOrder":
+      await publicClient.simulateContract({
+        ...base,
+        functionName: "matchOrder",
+        args: call.args,
+      });
+      break;
+    case "settle":
+      await publicClient.simulateContract({
+        ...base,
+        functionName: "settle",
+        args: call.args,
+      });
+      break;
+    case "cancel":
+      await publicClient.simulateContract({
+        ...base,
+        functionName: "cancel",
+        args: call.args,
+      });
+      break;
+  }
 }
 
 export function useForwardOrders(address?: `0x${string}`) {
@@ -84,14 +108,14 @@ export function useCreateAsk() {
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } =
-    useWriteContract(WM("createAsk"));
+    useWriteContract();
   const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const createAsk = useCallback(
     async (regionId: bigint, strikePriceDOT: bigint, deliveryBlock: bigint) => {
       if (!address) throw new Error("Wallet not connected");
       const args = [regionId, strikePriceDOT, uint32Arg(deliveryBlock)] as const;
-      await simulateForwardWrite(publicClient, address, "createAsk", args);
+      await simulateForwardWrite(publicClient, address, { functionName: "createAsk", args });
       return writeContractAsync({
         chainId: ASSET_HUB_CHAIN_ID,
         account: address,
@@ -120,7 +144,7 @@ export function useMatchOrder() {
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } =
-    useWriteContract(WM("matchOrder"));
+    useWriteContract();
   const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const matchOrder = useCallback(
@@ -128,7 +152,7 @@ export function useMatchOrder() {
       if (!address) throw new Error("Wallet not connected");
       const id = BigInt(orderId);
       const args = [id] as const;
-      await simulateForwardWrite(publicClient, address, "matchOrder", args);
+      await simulateForwardWrite(publicClient, address, { functionName: "matchOrder", args });
       return writeContractAsync({
         chainId: ASSET_HUB_CHAIN_ID,
         account: address,
@@ -157,7 +181,7 @@ export function useSettleForward() {
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } =
-    useWriteContract(WM("settle"));
+    useWriteContract();
   const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const settle = useCallback(
@@ -165,7 +189,7 @@ export function useSettleForward() {
       if (!address) throw new Error("Wallet not connected");
       const id = BigInt(orderId);
       const args = [id] as const;
-      await simulateForwardWrite(publicClient, address, "settle", args);
+      await simulateForwardWrite(publicClient, address, { functionName: "settle", args });
       return writeContractAsync({
         chainId: ASSET_HUB_CHAIN_ID,
         account: address,
@@ -194,7 +218,7 @@ export function useCancelOrder() {
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } =
-    useWriteContract(WM("cancel"));
+    useWriteContract();
   const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const cancel = useCallback(
@@ -202,7 +226,7 @@ export function useCancelOrder() {
       if (!address) throw new Error("Wallet not connected");
       const id = BigInt(orderId);
       const args = [id] as const;
-      await simulateForwardWrite(publicClient, address, "cancel", args);
+      await simulateForwardWrite(publicClient, address, { functionName: "cancel", args });
       return writeContractAsync({
         chainId: ASSET_HUB_CHAIN_ID,
         account: address,
