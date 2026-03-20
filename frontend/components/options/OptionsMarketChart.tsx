@@ -674,4 +674,3 @@ export function OptionsMarketChart() {
     </Card>
   );
 }
-
