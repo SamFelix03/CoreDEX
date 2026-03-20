@@ -10,6 +10,7 @@ import { useCreateAsk } from "@/hooks/useForwardOrders";
 import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
 import { ASSET_HUB_CHAIN_ID, UI_STRIKE_MAX_WEI, UI_STRIKE_MIN_WEI } from "@/constants";
 import { finalizeEvmFutureBlockForTx } from "@/lib/relayBlockEstimate";
+import { formatTransactionError } from "@/lib/walletError";
 import { formatDOT, parseDOT } from "@/lib/utils";
 
 export function CreateAskForm() {
@@ -149,8 +150,8 @@ export function CreateAskForm() {
           </div>
         )}
         {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
-            {(error as Error).message?.slice(0, 120)}
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up whitespace-pre-wrap break-words">
+            {formatTransactionError(error)}
           </div>
         )}
         {isSuccess && (

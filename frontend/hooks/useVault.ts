@@ -122,12 +122,13 @@ export function useClaimYield() {
     query: { enabled: !!hash },
   });
 
+  /** `epoch` must match on-chain `claimYield(uint256 receiptTokenId, uint256 epoch)` (e.g. a finalized past epoch). */
   const claimYield = useCallback(
-    async (receiptId: bigint) => {
+    async (receiptTokenId: bigint, epoch: bigint) => {
       return writeContractAsync({
         ...yieldVaultContract,
         functionName: "claimYield",
-        args: [receiptId],
+        args: [receiptTokenId, epoch],
         ...heavyTxGas(),
       });
     },
