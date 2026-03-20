@@ -1,4 +1,4 @@
-import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
+import { useReadContract, useWriteContract, useAccount } from "wagmi";
 import { forwardMarketContract } from "@/lib/contracts";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { heavyTxGas } from "@/lib/txGas";
@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import type { ForwardOrder } from "@/types/protocol";
 import { uint32Arg } from "@/lib/utils";
 import { parseForwardOrderRead } from "@/lib/decodeEvmStructs";
-import { hubWaitForTransactionReceiptProps } from "@/lib/txReceipt";
+import { useHubTransactionReceipt } from "@/hooks/useHubTransactionReceipt";
 
 export function useForwardOrders(address?: `0x${string}`) {
   const { data: sellerOrderIds } = useReadContract({
@@ -51,12 +51,7 @@ export function useForwardOrder(orderId: bigint | undefined) {
 export function useCreateAsk() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const createAsk = useCallback(
     async (regionId: bigint, strikePriceDOT: bigint, deliveryBlock: bigint) => {
@@ -80,7 +75,7 @@ export function useCreateAsk() {
     isWritePending,
     isConfirming,
     isSuccess,
-    error: writeError ?? receiptError,
+    error,
     reset,
   };
 }
@@ -88,12 +83,7 @@ export function useCreateAsk() {
 export function useMatchOrder() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const matchOrder = useCallback(
     async (orderId: bigint) => {
@@ -117,7 +107,7 @@ export function useMatchOrder() {
     isWritePending,
     isConfirming,
     isSuccess,
-    error: writeError ?? receiptError,
+    error,
     reset,
   };
 }
@@ -125,12 +115,7 @@ export function useMatchOrder() {
 export function useSettleForward() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const settle = useCallback(
     async (orderId: bigint) => {
@@ -154,7 +139,7 @@ export function useSettleForward() {
     isWritePending,
     isConfirming,
     isSuccess,
-    error: writeError ?? receiptError,
+    error,
     reset,
   };
 }
@@ -162,12 +147,7 @@ export function useSettleForward() {
 export function useCancelOrder() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const cancel = useCallback(
     async (orderId: bigint) => {
@@ -191,7 +171,7 @@ export function useCancelOrder() {
     isWritePending,
     isConfirming,
     isSuccess,
-    error: writeError ?? receiptError,
+    error,
     reset,
   };
 }

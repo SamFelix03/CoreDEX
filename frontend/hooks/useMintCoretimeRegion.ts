@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { CORETIME_NFT_ABI, coretimeNftContract } from "@/lib/coretimeNft";
 import { parseMintedErc721TokenIdFromReceipt } from "@/lib/parseMintedNftFromReceipt";
 import { heavyTxGas } from "@/lib/txGas";
-import { hubWaitForTransactionReceiptProps } from "@/lib/txReceipt";
+import { useHubTransactionReceipt } from "@/hooks/useHubTransactionReceipt";
 
 /**
  * Same as Hardhat scripts (`mint-demo-region.ts`, `test-forwardmarket-individual.ts`):
@@ -23,16 +23,7 @@ export function useMintCoretimeRegion() {
   /** Token id from the same `simulateContract` call that matched the tx args (set right before `writeContract`). */
   const pendingIdFromSimulation = useRef<bigint | undefined>(undefined);
 
-  const {
-    data: receipt,
-    isLoading: isConfirming,
-    isSuccess,
-    error: receiptError,
-  } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { receipt, isConfirming, isSuccess, error: receiptMergedError } = useHubTransactionReceipt(hash, writeError);
 
   useEffect(() => {
     if (!isSuccess || !address) return;
@@ -94,7 +85,7 @@ export function useMintCoretimeRegion() {
     mintedTokenId,
     isPending: isPending || isConfirming,
     isSuccess,
-    error: writeError ?? receiptError,
+    error: receiptMergedError,
     reset,
   };
 }

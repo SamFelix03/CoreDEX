@@ -26,6 +26,10 @@ export enum OptionType {
   Put  = 1,
 }
 
+/**
+ * ⚠️ On-chain `OptionsEngine` uses: 0=active (listed or purchased), 1=exercised, 2=expired.
+ * Do not assume `1` means “purchased” — use `holder != 0` for that (see `optionOnChainUi.ts`).
+ */
 export enum OptionStatus {
   Active    = 0,
   Purchased = 1,
