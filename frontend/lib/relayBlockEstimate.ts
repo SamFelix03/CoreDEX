@@ -1,4 +1,8 @@
-import { RELAY_BLOCK_TIME_SECONDS, RELAY_BLOCK_UINT32_MAX } from "@/constants";
+import {
+  MIN_EVM_BLOCK_LEAD,
+  RELAY_BLOCK_TIME_SECONDS,
+  RELAY_BLOCK_UINT32_MAX,
+} from "@/constants";
 
 /**
  * Map a wall-clock instant to an estimated relay-chain block number using the latest
@@ -25,6 +29,14 @@ export function estimateRelayBlockAtTime({
   if (estimated <= currentBlock) {
     estimated = currentBlock + 1n;
   }
+
+  // Must be strictly greater than `block.number` at tx time — match `test-forwardmarket-individual.ts`
+  // (`deliveryBlock = currentBlock + 10_000`) when the time-based number is too low for this RPC.
+  const minFromHead = currentBlock + MIN_EVM_BLOCK_LEAD;
+  if (estimated < minFromHead) {
+    estimated = minFromHead;
+  }
+
   if (estimated > RELAY_BLOCK_UINT32_MAX) {
     return {
       estimatedBlock: null,

@@ -45,3 +45,10 @@ export const BPS_DENOMINATOR    = 10_000n;
 /** Hub / relay-style assumption for mapping wall-clock → block height in the UI (Solidity uses uint32 for many block fields). */
 export const RELAY_BLOCK_TIME_SECONDS = 12;
 export const RELAY_BLOCK_UINT32_MAX     = 4_294_967_295n;
+
+/**
+ * `ForwardMarket.createAsk` / `OptionsEngine` use `block.number` on the **EVM** (Hub) RPC.
+ * Wall-clock estimates can sit on a different scale than that number and end up **below** the real head
+ * → instant `DeliveryBlockInPast` with tiny gas use. Hardhat scripts always use `head + 10_000` instead.
+ */
+export const MIN_EVM_BLOCK_LEAD = 10_000n;

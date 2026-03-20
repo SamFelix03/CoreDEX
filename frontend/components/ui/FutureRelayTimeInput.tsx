@@ -2,7 +2,6 @@
 
 import { format, addMinutes } from "date-fns";
 import { cn } from "@/lib/utils";
-import { RELAY_BLOCK_TIME_SECONDS } from "@/constants";
 
 type Props = {
   label: string;
@@ -52,8 +51,11 @@ export function FutureRelayTimeInput({
       {description && (
         <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
       )}
-      <p className="text-[10px] text-white/50 font-mono">
-        ~{RELAY_BLOCK_TIME_SECONDS}s block spacing → contract receives a relay block number (uint32).
+      <p className="text-[10px] text-white/50 font-mono leading-relaxed">
+        Uses this RPC&apos;s latest EVM <span className="text-white/70">block.number</span> + your time delta.
+        If that would land before <span className="text-white/70">head + 10000</span> (same as Hardhat scripts), the
+        app bumps it — otherwise <span className="text-white/70">createAsk</span> reverts with{" "}
+        <span className="text-white/70">DeliveryBlockInPast</span>.
       </p>
       {isLoadingHead && (
         <p className="text-xs text-muted-foreground">Reading chain head…</p>
