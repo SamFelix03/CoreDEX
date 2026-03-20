@@ -7,8 +7,8 @@
 | Smart contracts (Solidity, Hardhat) | [github.com/SamFelix03/coreDEX/tree/main/smart-contracts](https://github.com/SamFelix03/coreDEX/tree/main/smart-contracts) |
 | Rust PVM contracts (PolkaVM binaries built from `rust-contracts`) | [github.com/SamFelix03/coreDEX/tree/main/smart-contracts/rust-contracts](https://github.com/SamFelix03/coreDEX/tree/main/smart-contracts/rust-contracts) |
 | PVM precompiles (reference Substrate / precompile implementations) | [github.com/SamFelix03/coreDEX/tree/main/pvm-modules](https://github.com/SamFelix03/coreDEX/tree/main/pvm-modules) |
-| Demo video | *Link to be added.* |
-| Pitch deck | *Link to be added.* |
+| Demo video | [View Here](https://www.canva.com/design/DAHEdeXrTPY/jjcR6n7bLREfQAiUqf-jjA/watch?utm_content=DAHEdeXrTPY&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hcfce4f3504) |
+| Pitch deck | [View Here](https://www.canva.com/design/DAHEendUZ_4/binGCcNj3CUyIqOCY04S5A/view?utm_content=DAHEendUZ_4&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hbc5722e6ea) |
 
 ## Introduction
 
