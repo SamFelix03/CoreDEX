@@ -47,6 +47,11 @@ function sortBigintAsc(a: bigint, b: bigint) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+function toBigint(v: unknown): bigint {
+  if (typeof v === "bigint") return v;
+  return BigInt(v as number | string);
+}
+
 type Timeframe = "1d" | "7d" | "30d";
 
 function getLookbackBlocks(timeframe: Timeframe) {
@@ -63,6 +68,45 @@ function pickCandleIntervalBlocks(lookbackBlocks: bigint, timeframe: Timeframe) 
   const targetCandles = timeframe === "1d" ? 28 : timeframe === "7d" ? 40 : 60;
   const raw = lookbackBlocks / BigInt(targetCandles);
   return raw > 0n ? raw : 1n;
+}
+
+/** Zoom x-axis to actual trade blocks so a burst of txs isn't one candle. */
+function bucketWindowForTrades(
+  queryFrom: bigint,
+  queryTo: bigint,
+  tradeBlocks: bigint[]
+): { fromBlock: bigint; toBlock: bigint } {
+  if (tradeBlocks.length === 0) {
+    return { fromBlock: queryFrom, toBlock: queryTo };
+  }
+  let minB = tradeBlocks[0];
+  let maxB = tradeBlocks[0];
+  for (const b of tradeBlocks) {
+    if (b < minB) minB = b;
+    if (b > maxB) maxB = b;
+  }
+  const span = maxB - minB;
+  const pad = span > 0n ? span / 6n + 40n : 500n;
+  let fromBlock = minB > pad ? minB - pad : 0n;
+  let toBlock = maxB + pad;
+  if (toBlock > queryTo) toBlock = queryTo;
+  if (fromBlock < queryFrom) fromBlock = queryFrom;
+  let win = toBlock - fromBlock;
+  if (win < 120n) {
+    const mid = (minB + maxB) / 2n;
+    fromBlock = mid - 60n;
+    toBlock = mid + 60n;
+    if (fromBlock < queryFrom) {
+      toBlock += queryFrom - fromBlock;
+      fromBlock = queryFrom;
+    }
+    if (toBlock > queryTo) {
+      fromBlock -= toBlock - queryTo;
+      toBlock = queryTo;
+    }
+    if (fromBlock < queryFrom) fromBlock = queryFrom;
+  }
+  return { fromBlock, toBlock };
 }
 
 type TradeScope = "market" | "mine";
@@ -143,10 +187,10 @@ export function OptionsMarketChart() {
             //   optionId, writer, holder, coretimeRegion, strikePriceDOT,
             //   premiumDOT, expiryBlock, optionType, status
             optionType: Number(d[7]),
-            coretimeRegion: d[3] as bigint,
-            strikePriceDOT: d[4] as bigint,
-            premiumDOT: d[5] as bigint,
-            expiryBlock: d[6] as bigint,
+            coretimeRegion: toBigint(d[3]),
+            strikePriceDOT: toBigint(d[4]),
+            premiumDOT: toBigint(d[5]),
+            expiryBlock: toBigint(d[6]),
           };
 
           // We'll attach blockNumber later from the OptionPurchased log.
@@ -214,7 +258,14 @@ export function OptionsMarketChart() {
   const chart = useMemo(() => {
     if (!data) return null;
 
-    const lookbackBlocks = data.toBlock - data.fromBlock;
+    const queryFrom = data.fromBlock;
+    const queryTo = data.toBlock;
+    const { fromBlock, toBlock } = bucketWindowForTrades(
+      queryFrom,
+      queryTo,
+      filteredTradePoints.map((tp) => tp.blockNumber)
+    );
+    const lookbackBlocks = toBlock - fromBlock;
     const intervalBlocks = pickCandleIntervalBlocks(lookbackBlocks, timeframe);
     const candleCount = Number((lookbackBlocks / intervalBlocks) + 1n);
 
@@ -228,7 +279,7 @@ export function OptionsMarketChart() {
     const scaleMax = maxN + pad;
 
     const buckets = Array.from({ length: candleCount }, (_, idx) => {
-      const startBlock = data.fromBlock + BigInt(idx) * intervalBlocks;
+      const startBlock = fromBlock + BigInt(idx) * intervalBlocks;
       const endBlock = startBlock + intervalBlocks;
       return {
         idx,
@@ -239,8 +290,8 @@ export function OptionsMarketChart() {
     });
 
     for (const tp of filteredTradePoints) {
-      if (tp.blockNumber < data.fromBlock || tp.blockNumber > data.toBlock) continue;
-      const idx = Number((tp.blockNumber - data.fromBlock) / intervalBlocks);
+      if (tp.blockNumber < fromBlock || tp.blockNumber > toBlock) continue;
+      const idx = Number((tp.blockNumber - fromBlock) / intervalBlocks);
       if (idx < 0 || idx >= buckets.length) continue;
       buckets[idx].trades.push(tp);
     }
@@ -280,7 +331,7 @@ export function OptionsMarketChart() {
       .slice(0, 5);
 
     const upcoming = upcomingExpiryOptions
-      .filter((b) => b >= nowBlock && b >= data.fromBlock && b <= data.toBlock + lookbackBlocks)
+      .filter((b) => b >= nowBlock && b >= fromBlock && b <= toBlock + lookbackBlocks)
       .slice(0, 2);
 
     return {
@@ -293,6 +344,8 @@ export function OptionsMarketChart() {
       maxN: scaleMax,
       upcomingExpiryBlocks: upcoming,
       nowBlock,
+      bucketFrom: fromBlock,
+      bucketTo: toBlock,
     };
   }, [data, filteredTradePoints, timeframe]);
 
@@ -511,11 +564,12 @@ export function OptionsMarketChart() {
                   <>
                     {/* Expiry marker lines */}
                     {chart.upcomingExpiryBlocks.map((expiryBlock) => {
-                      const idx = (expiryBlock - data!.fromBlock) / chart.intervalBlocks;
+                      const eb = toBigint(expiryBlock);
+                      const idx = (eb - chart.bucketFrom) / chart.intervalBlocks;
                       if (idx < 0n || idx >= BigInt(chart.candleCount)) return null;
                       const x = xForIdx(Number(idx));
                       return (
-                        <g key={expiryBlock.toString()}>
+                        <g key={eb.toString()}>
                           <line
                             x1={x}
                             x2={x}
@@ -575,7 +629,9 @@ export function OptionsMarketChart() {
 
                     {/* Trade point markers */}
                     {filteredTradePoints.map((tp) => {
-                      const idx = Number((tp.blockNumber - data!.fromBlock) / chart.intervalBlocks);
+                      const idx = Number(
+                        (toBigint(tp.blockNumber) - chart.bucketFrom) / chart.intervalBlocks
+                      );
                       if (idx < 0 || idx >= chart.candleCount) return null;
                       const x = xForIdx(idx);
                       const y = yForN(dotToNumber(tp.premiumDOT));
