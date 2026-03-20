@@ -43,7 +43,6 @@ export interface Option {
   premiumDOT:     bigint;
   expiryBlock:    bigint;
   status:         OptionStatus;
-  createdBlock:   bigint;
 }
 
 // ─── Yield Vault ────────────────────────────────────────────────────────────

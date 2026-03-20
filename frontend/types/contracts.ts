@@ -26,13 +26,18 @@ export const FORWARD_MARKET_ABI = [
   { name: "orders",          type: "function", stateMutability: "view",
     inputs: [{ name: "orderId", type: "uint256" }],
     outputs: [
+      // Solidity getter for `mapping(uint256 => ForwardOrder) public orders;`
+      // where ForwardOrder fields are:
+      //   orderId, seller, buyer, coretimeRegion(uint128), strikePriceDOT(uint128),
+      //   deliveryBlock(uint32), createdBlock(uint32), status(uint8)
+      { name: "orderId",         type: "uint256" },
       { name: "seller",         type: "address" },
       { name: "buyer",          type: "address" },
-      { name: "regionId",       type: "uint256" },
-      { name: "strikePriceDOT", type: "uint256" },
-      { name: "deliveryBlock",  type: "uint256" },
+      { name: "regionId",       type: "uint128" },
+      { name: "strikePriceDOT", type: "uint128" },
+      { name: "deliveryBlock",  type: "uint32" },
+      { name: "createdBlock",   type: "uint32" },
       { name: "status",         type: "uint8" },
-      { name: "createdBlock",   type: "uint256" },
     ],
   },
   { name: "getSellerOrders", type: "function", stateMutability: "view", inputs: [{ name: "seller", type: "address" }], outputs: [{ type: "uint256[]" }] },
@@ -43,7 +48,7 @@ export const FORWARD_MARKET_ABI = [
   { name: "settle",          type: "function", stateMutability: "nonpayable", inputs: [{ name: "orderId", type: "uint256" }], outputs: [] },
   { name: "cancel",          type: "function", stateMutability: "nonpayable", inputs: [{ name: "orderId", type: "uint256" }], outputs: [] },
   { name: "expireOrder",     type: "function", stateMutability: "nonpayable", inputs: [{ name: "orderId", type: "uint256" }], outputs: [] },
-  { name: "OrderCreated",    type: "event", inputs: [{ name: "orderId", type: "uint256", indexed: true }, { name: "seller", type: "address", indexed: true }, { name: "regionId", type: "uint256", indexed: false }, { name: "strikePriceDOT", type: "uint256", indexed: false }, { name: "deliveryBlock", type: "uint256", indexed: false }] },
+  { name: "OrderCreated",    type: "event", inputs: [{ name: "orderId", type: "uint256", indexed: true }, { name: "seller", type: "address", indexed: true }, { name: "regionId", type: "uint128", indexed: false }, { name: "strikePriceDOT", type: "uint128", indexed: false }, { name: "deliveryBlock", type: "uint32", indexed: false }] },
   { name: "OrderMatched",    type: "event", inputs: [{ name: "orderId", type: "uint256", indexed: true }, { name: "buyer", type: "address", indexed: true }] },
   { name: "OrderSettled",    type: "event", inputs: [{ name: "orderId", type: "uint256", indexed: true }] },
   { name: "OrderCancelled",  type: "event", inputs: [{ name: "orderId", type: "uint256", indexed: true }] },
@@ -58,15 +63,19 @@ export const OPTIONS_ENGINE_ABI = [
   { name: "options",       type: "function", stateMutability: "view",
     inputs: [{ name: "optionId", type: "uint256" }],
     outputs: [
+      // Solidity getter for `mapping(uint256 => Option) public options;`
+      // where Option fields are:
+      //   optionId, writer, holder, coretimeRegion(uint128), strikePriceDOT(uint128),
+      //   premiumDOT(uint128), expiryBlock(uint32), optionType(uint8), status(uint8)
+      { name: "optionId",       type: "uint256" },
       { name: "writer",         type: "address" },
       { name: "holder",         type: "address" },
+      { name: "coretimeRegion", type: "uint128" },
+      { name: "strikePriceDOT", type: "uint128" },
+      { name: "premiumDOT",     type: "uint128" },
+      { name: "expiryBlock",    type: "uint32" },
       { name: "optionType",     type: "uint8" },
-      { name: "coretimeRegion", type: "uint256" },
-      { name: "strikePriceDOT", type: "uint256" },
-      { name: "premiumDOT",     type: "uint256" },
-      { name: "expiryBlock",    type: "uint256" },
       { name: "status",         type: "uint8" },
-      { name: "createdBlock",   type: "uint256" },
     ],
   },
   { name: "getWriterOptions", type: "function", stateMutability: "view", inputs: [{ name: "writer", type: "address" }], outputs: [{ type: "uint256[]" }] },

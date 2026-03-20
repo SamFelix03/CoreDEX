@@ -41,14 +41,17 @@ export function useForwardOrder(orderId: bigint | undefined) {
   const d = data as unknown as unknown[] | undefined;
   const order: ForwardOrder | undefined = d
     ? {
-        orderId:        orderId!,
-        seller:         d[0] as string,
-        buyer:          d[1] as string,
-        regionId:       d[2] as bigint,
-        strikePriceDOT: d[3] as bigint,
-        deliveryBlock:  d[4] as bigint,
-        status:         Number(d[5]),
+        // Solidity tuple order from `ForwardMarket.orders(orderId)`:
+        //   orderId, seller, buyer, regionId(uint128), strikePriceDOT(uint128),
+        //   deliveryBlock(uint32), createdBlock(uint32), status(uint8)
+        orderId:        d[0] as bigint,
+        seller:         d[1] as string,
+        buyer:          d[2] as string,
+        regionId:       d[3] as bigint,
+        strikePriceDOT: d[4] as bigint,
+        deliveryBlock:  d[5] as bigint,
         createdBlock:   d[6] as bigint,
+        status:         Number(d[7]),
       }
     : undefined;
 

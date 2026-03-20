@@ -41,16 +41,18 @@ export function useOption(optionId: bigint | undefined) {
   const d = data as unknown as unknown[] | undefined;
   const option: Option | undefined = d
     ? {
-        optionId:       optionId!,
-        writer:         d[0] as string,
-        holder:         d[1] as string,
-        optionType:     Number(d[2]),
+        // Solidity tuple order (OptionsEngine.options getter):
+        //   optionId, writer, holder, coretimeRegion, strikePriceDOT,
+        //   premiumDOT, expiryBlock, optionType, status
+        optionId:       d[0] as bigint,
+        writer:         d[1] as string,
+        holder:         d[2] as string,
+        optionType:     Number(d[7]),
         coretimeRegion: d[3] as bigint,
         strikePriceDOT: d[4] as bigint,
         premiumDOT:     d[5] as bigint,
         expiryBlock:    d[6] as bigint,
-        status:         Number(d[7]),
-        createdBlock:   d[8] as bigint,
+        status:         Number(d[8]),
       }
     : undefined;
 
