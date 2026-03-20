@@ -47,6 +47,10 @@ function sortBigintAsc(a: bigint, b: bigint) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
+function toBigint(value: bigint | number | string) {
+  return typeof value === "bigint" ? value : BigInt(value);
+}
+
 type Timeframe = "1d" | "7d" | "30d";
 
 function getLookbackBlocks(timeframe: Timeframe) {
@@ -143,10 +147,11 @@ export function OptionsMarketChart() {
             //   optionId, writer, holder, coretimeRegion, strikePriceDOT,
             //   premiumDOT, expiryBlock, optionType, status
             optionType: Number(d[7]),
-            coretimeRegion: d[3] as bigint,
-            strikePriceDOT: d[4] as bigint,
-            premiumDOT: d[5] as bigint,
-            expiryBlock: d[6] as bigint,
+            coretimeRegion: toBigint(d[3] as bigint | number | string),
+            strikePriceDOT: toBigint(d[4] as bigint | number | string),
+            premiumDOT: toBigint(d[5] as bigint | number | string),
+            // viem may decode uint32 as number; normalize to bigint for chart math.
+            expiryBlock: toBigint(d[6] as bigint | number | string),
           };
 
           // We'll attach blockNumber later from the OptionPurchased log.
@@ -618,4 +623,3 @@ export function OptionsMarketChart() {
     </Card>
   );
 }
-
