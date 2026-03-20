@@ -11,7 +11,7 @@ export const polkadotHubTestnet = defineChain({
     public:  { http: ["https://services.polkadothub-rpc.com/testnet"] },
   },
   blockExplorers: {
-    default: { name: "Subscan", url: "https://assethub-westend.subscan.io" },
+    default: { name: "Blockscout", url: "https://blockscout-testnet.polkadot.io" },
   },
   testnet: true,
 });

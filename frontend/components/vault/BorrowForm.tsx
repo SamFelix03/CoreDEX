@@ -1,52 +1,112 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useChainId } from "wagmi";
+import { addDays, format } from "date-fns";
+import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
 import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
 import { useVaultBorrow, useVaultStats } from "@/hooks/useVault";
-import { ASSET_HUB_CHAIN_ID } from "@/constants";
+import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
+import { ASSET_HUB_CHAIN_ID, RELAY_BLOCK_UINT32_MAX } from "@/constants";
+import { finalizeEvmFutureBlockForTx } from "@/lib/relayBlockEstimate";
 import { formatTransactionError } from "@/lib/walletError";
-import { computeVaultBorrowFee } from "@/lib/vaultBorrow";
-import { formatDOT } from "@/lib/utils";
+import { VAULT_RATE_PRECISION } from "@/lib/vaultBorrow";
+import { formatDOT, blocksToTime } from "@/lib/utils";
 
-/** Defaults match `smart-contracts/scripts/test-yieldvault-individual.ts` (`coreCount = 1`, `durationBlocks = 1000`). */
+/** Default core count matches scripts (`borrow(1, durationBlocks)`). */
 const DEFAULT_CORE = "1";
-const DEFAULT_DURATION_BLOCKS = "1000";
 
 export function BorrowForm() {
   const [coreCount, setCoreCount] = useState(DEFAULT_CORE);
-  const [durationBlocks, setDurationBlocks] = useState(DEFAULT_DURATION_BLOCKS);
+  const [returnWhen, setReturnWhen] = useState(() =>
+    format(addDays(new Date(), 7), "yyyy-MM-dd'T'HH:mm")
+  );
+  const [blockFinalizeNote, setBlockFinalizeNote] = useState<string | null>(null);
 
+  const { address, isConnected } = useAccount();
   const chainId = useChainId();
+  const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
+
+  const targetMs = useMemo(() => {
+    if (!returnWhen?.trim()) return null;
+    const t = new Date(returnWhen).getTime();
+    return Number.isFinite(t) ? t : null;
+  }, [returnWhen]);
+
+  const {
+    estimatedBlock: dueBlock,
+    error: blockEstError,
+    isLoadingHead,
+    latestBlockNumber,
+  } = useEstimatedRelayBlock(targetMs);
 
   const { stats } = useVaultStats();
   const { borrow, isPending, isSuccess, error, reset, hash } = useVaultBorrow();
 
   const coreN = Number.parseInt(coreCount.trim(), 10);
-  const durN = Number.parseInt(durationBlocks.trim(), 10);
-  const countsValid =
-    Number.isFinite(coreN) &&
-    Number.isFinite(durN) &&
-    coreN >= 1 &&
-    durN >= 1 &&
-    coreN <= 0xffff_ffff &&
-    durN <= 0xffff_ffff;
+  const coreValid =
+    Number.isFinite(coreN) && coreN >= 1 && coreN <= 0xffff_ffff;
+
+  /** UI preview: blocks from cached head to estimated due block (same idea as forwards). */
+  const previewDurationBlocks =
+    dueBlock !== null && latestBlockNumber !== null && dueBlock > latestBlockNumber
+      ? dueBlock - latestBlockNumber
+      : null;
 
   const previewFee = useMemo(() => {
-    if (!stats || !countsValid) return null;
-    return computeVaultBorrowFee(coreN, durN, stats.lendingRate);
-  }, [stats, countsValid, coreN, durN]);
+    if (!stats || !coreValid || previewDurationBlocks === null || previewDurationBlocks < 1n) return null;
+    return (BigInt(coreN) * previewDurationBlocks * stats.lendingRate) / VAULT_RATE_PRECISION;
+  }, [stats, coreValid, coreN, previewDurationBlocks]);
 
-  const canSubmit = countsValid && !wrongChain;
+  /** Same gating idea as `CreateAskForm` — `publicClient` is checked inside the click handler. */
+  const canSubmit =
+    isConnected &&
+    !!address &&
+    !wrongChain &&
+    coreValid &&
+    previewDurationBlocks !== null &&
+    previewDurationBlocks >= 1n &&
+    previewDurationBlocks <= RELAY_BLOCK_UINT32_MAX &&
+    !blockEstError &&
+    !isLoadingHead;
 
   const handleBorrow = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || dueBlock === null) return;
+    if (!publicClient) {
+      console.error("borrow: no public client");
+      return;
+    }
+    setBlockFinalizeNote(null);
     try {
-      await borrow(BigInt(coreN), BigInt(durN));
+      const { block: dueFinal, error: finErr, adjusted } = await finalizeEvmFutureBlockForTx(
+        publicClient,
+        dueBlock
+      );
+      if (finErr) {
+        setBlockFinalizeNote(finErr);
+        return;
+      }
+      const head = await publicClient.getBlockNumber();
+      let durationBlocks = dueFinal - head;
+      if (durationBlocks < 1n) durationBlocks = 1n;
+      if (durationBlocks > RELAY_BLOCK_UINT32_MAX) {
+        setBlockFinalizeNote(
+          "Computed loan duration exceeds uint32 max. Choose an earlier return-by time."
+        );
+        return;
+      }
+      if (adjusted) {
+        setBlockFinalizeNote(
+          `Loan duration set to ${durationBlocks.toString()} blocks (~${blocksToTime(
+            durationBlocks
+          )}) — fresh RPC head + minimum block lead applied (same pattern as forward asks).`
+        );
+      }
+      await borrow(BigInt(coreN), durationBlocks);
     } catch (e) {
       console.error("borrow failed:", e);
     }
@@ -56,6 +116,11 @@ export function BorrowForm() {
     <Card className="animate-slide-in-up">
       <CardHeader label="Borrow Regions" />
       <CardContent className="flex flex-col gap-4">
+        {!isConnected && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            Connect your wallet to borrow.
+          </div>
+        )}
         {wrongChain && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
             Switch to <span className="font-mono">Polkadot Hub TestNet</span> (chain {ASSET_HUB_CHAIN_ID}).
@@ -73,28 +138,47 @@ export function BorrowForm() {
           }}
           disabled={wrongChain}
         />
-        <Input
-          label="Duration (blocks)"
-          type="number"
-          min={1}
-          placeholder={DEFAULT_DURATION_BLOCKS}
-          value={durationBlocks}
-          onChange={(e) => {
+        <FutureRelayTimeInput
+          label="Return by"
+          description="Loan length is the number of EVM blocks from the current head until this time (~12s per block). If the pick is too soon, we add the same minimum block lead as forward asks."
+          value={returnWhen}
+          onChange={(v) => {
             reset();
-            setDurationBlocks(e.target.value);
+            setReturnWhen(v);
           }}
-          disabled={wrongChain}
+          estimatedBlock={dueBlock}
+          estimateError={blockEstError}
+          isLoadingHead={isLoadingHead}
+          latestBlockNumber={latestBlockNumber}
         />
-        <p className="text-[10px] text-muted-foreground -mt-2 leading-relaxed">
-          Same shape as the Hardhat script: <span className="font-mono">borrow(uint32 coreCount, uint32 durationBlocks)</span>
-          . The wallet may ask you to <strong>approve DOT</strong> for the vault first (lending fee), then confirm{" "}
-          <strong>borrow</strong>.
+        {previewDurationBlocks !== null && previewDurationBlocks >= 1n && !blockEstError && (
+          <p className="text-xs text-muted-foreground">
+            Approx. duration from current head:{" "}
+            <span className="font-mono text-foreground">{previewDurationBlocks.toString()}</span> blocks (~
+            {blocksToTime(previewDurationBlocks)}). Final value is recomputed at send time from a fresh head.
+          </p>
+        )}
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          On-chain: <span className="font-mono">borrow(uint32 coreCount, uint32 durationBlocks)</span>. The vault pulls
+          the lending fee via DOT <span className="font-mono">transferFrom</span> — you may be asked to{" "}
+          <strong>approve</strong> the vault first, then <strong>borrow</strong>.
         </p>
         {previewFee !== null && (
           <p className="text-xs text-muted-foreground">
             Estimated lending fee (from current rate):{" "}
             <span className="font-mono text-foreground">{formatDOT(previewFee)} DOT</span>
           </p>
+        )}
+        {blockFinalizeNote && (
+          <div
+            className={`rounded-lg border px-4 py-3 text-xs animate-slide-in-up ${
+              blockFinalizeNote.includes("fresh RPC") || blockFinalizeNote.includes("Loan duration set")
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : "border-destructive/30 bg-destructive/10 text-destructive"
+            }`}
+          >
+            {blockFinalizeNote}
+          </div>
         )}
         {error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up whitespace-pre-wrap break-words">
@@ -107,7 +191,6 @@ export function BorrowForm() {
           </TxSuccessWithExplorer>
         )}
         <Button
-          variant="outline"
           onClick={handleBorrow}
           loading={isPending}
           disabled={!canSubmit}
