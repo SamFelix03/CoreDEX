@@ -79,10 +79,10 @@ export function OrderList() {
           </p>
         </CardContent>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-h-[420px] overflow-auto overscroll-contain">
           <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-secondary/50">
+            <thead className="sticky top-0 z-10">
+              <tr className="border-b border-border bg-secondary/95 backdrop-blur">
                 {["Order", "Region", "Strike", "Seller", "Status", "Actions"].map((h) => (
                   <th
                     key={h}

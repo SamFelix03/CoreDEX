@@ -79,10 +79,10 @@ export function OptionList() {
           </p>
         </CardContent>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-h-[420px] overflow-auto overscroll-contain">
           <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b border-border bg-secondary/50">
+            <thead className="sticky top-0 z-10">
+              <tr className="border-b border-border bg-secondary/95 backdrop-blur">
                 {["Option", "Type", "Region", "Strike", "Premium", "Status", "Actions"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {h}
