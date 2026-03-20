@@ -31,6 +31,16 @@ export function BorrowForm() {
   const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
 
+  /** Wagmi / RPC may return block.number as bigint, number, or serialized string — never mix with `>` vs BigInt (throws). */
+  const toBigIntSafe = (v: bigint | number | string | null | undefined): bigint | null => {
+    if (v == null) return null;
+    try {
+      return BigInt(v as bigint | number | string);
+    } catch {
+      return null;
+    }
+  };
+
   const targetMs = useMemo(() => {
     if (!returnWhen?.trim()) return null;
     const t = new Date(returnWhen).getTime();
@@ -52,30 +62,46 @@ export function BorrowForm() {
     Number.isFinite(coreN) && coreN >= 1 && coreN <= 0xffff_ffff;
 
   /** UI preview: blocks from cached head to estimated due block (same idea as forwards). */
+  const dueBi = toBigIntSafe(dueBlock);
+  const latestBi = toBigIntSafe(latestBlockNumber);
   const previewDurationBlocks =
-    dueBlock !== null && latestBlockNumber !== null && dueBlock > latestBlockNumber
-      ? dueBlock - latestBlockNumber
-      : null;
+    dueBi !== null && latestBi !== null && dueBi > latestBi ? dueBi - latestBi : null;
 
   const previewFee = useMemo(() => {
     if (!stats || !coreValid || previewDurationBlocks === null || previewDurationBlocks < 1n) return null;
     return (BigInt(coreN) * previewDurationBlocks * stats.lendingRate) / VAULT_RATE_PRECISION;
   }, [stats, coreValid, coreN, previewDurationBlocks]);
 
-  /** Same gating idea as `CreateAskForm` — `publicClient` is checked inside the click handler. */
-  const canSubmit =
-    isConnected &&
-    !!address &&
-    !wrongChain &&
-    coreValid &&
-    previewDurationBlocks !== null &&
-    previewDurationBlocks >= 1n &&
-    previewDurationBlocks <= RELAY_BLOCK_UINT32_MAX &&
-    !blockEstError &&
-    !isLoadingHead;
+  /**
+   * Match `CreateAskForm`: only require a valid estimated target block + head loaded — not extra duration math
+   * that can throw on BigInt vs number comparison. Final duration is derived at click time (after finalize).
+   */
+  const canSubmit = coreValid && dueBlock !== null && !blockEstError && !isLoadingHead;
+
+  const submitBlockers: string[] = [];
+  if (!coreValid) submitBlockers.push("Enter a valid core count (1–2³²−1).");
+  if (isLoadingHead) submitBlockers.push("Waiting for chain head…");
+  if (blockEstError) submitBlockers.push(blockEstError);
+  if (dueBlock === null && !isLoadingHead && !blockEstError && targetMs !== null) {
+    submitBlockers.push("Could not estimate return-by block — check datetime and RPC.");
+  }
+  if (dueBlock === null && targetMs === null) submitBlockers.push("Pick a return-by date and time.");
+
+  const borrowDisabled = !canSubmit || wrongChain || !isConnected || !address;
+  const borrowDisabledHint = wrongChain
+    ? `Switch to Polkadot Hub TestNet (chain ${ASSET_HUB_CHAIN_ID}).`
+    : !isConnected || !address
+      ? "Connect your wallet."
+      : !canSubmit && submitBlockers.length > 0
+        ? submitBlockers[0]
+        : null;
 
   const handleBorrow = async () => {
-    if (!canSubmit || dueBlock === null) return;
+    if (!canSubmit || dueBi === null) return;
+    if (!address) {
+      console.error("borrow: no wallet address");
+      return;
+    }
     if (!publicClient) {
       console.error("borrow: no public client");
       return;
@@ -84,7 +110,7 @@ export function BorrowForm() {
     try {
       const { block: dueFinal, error: finErr, adjusted } = await finalizeEvmFutureBlockForTx(
         publicClient,
-        dueBlock
+        dueBi
       );
       if (finErr) {
         setBlockFinalizeNote(finErr);
@@ -190,10 +216,17 @@ export function BorrowForm() {
             <span>Borrow confirmed — lending fee paid from your DOT balance (after approval if needed).</span>
           </TxSuccessWithExplorer>
         )}
+        {borrowDisabled && borrowDisabledHint && (
+          <p className="text-[10px] text-muted-foreground rounded-lg border border-border/60 bg-secondary/20 px-3 py-2">
+            <span className="font-semibold text-foreground/90">Borrow disabled: </span>
+            {borrowDisabledHint}
+          </p>
+        )}
         <Button
+          type="button"
           onClick={handleBorrow}
           loading={isPending}
-          disabled={!canSubmit}
+          disabled={borrowDisabled}
           className="w-full"
         >
           Borrow

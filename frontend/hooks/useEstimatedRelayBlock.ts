@@ -16,7 +16,8 @@ export function useEstimatedRelayBlock(targetTimeMs: number | null) {
   });
 
   return useMemo(() => {
-    if (!block?.number || block.timestamp === undefined) {
+    // Use `== null` so block number `0n` (genesis) is still valid — `!block.number` wrongly treats 0n as missing.
+    if (block == null || block.number == null || block.timestamp == null) {
       return {
         latestBlockNumber: null as bigint | null,
         latestBlockTimestamp: null as bigint | null,
@@ -28,23 +29,26 @@ export function useEstimatedRelayBlock(targetTimeMs: number | null) {
 
     if (targetTimeMs === null || !Number.isFinite(targetTimeMs)) {
       return {
-        latestBlockNumber: block.number,
-        latestBlockTimestamp: block.timestamp,
+        latestBlockNumber: BigInt(block.number),
+        latestBlockTimestamp: BigInt(block.timestamp),
         estimatedBlock: null,
         error: null,
         isLoadingHead: false,
       };
     }
 
+    const currentBlock = BigInt(block.number);
+    const latestBlockTimestamp = BigInt(block.timestamp);
+
     const { estimatedBlock, error } = estimateRelayBlockAtTime({
       targetTimeMs,
-      currentBlock: block.number,
-      latestBlockTimestamp: block.timestamp,
+      currentBlock,
+      latestBlockTimestamp,
     });
 
     return {
-      latestBlockNumber: block.number,
-      latestBlockTimestamp: block.timestamp,
+      latestBlockNumber: currentBlock,
+      latestBlockTimestamp,
       estimatedBlock,
       error,
       isLoadingHead: false,
