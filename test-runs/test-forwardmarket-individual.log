@@ -1,0 +1,52 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║         ForwardMarket Individual Test (2 Users)            ║
+╚══════════════════════════════════════════════════════════════╝
+
+  User1 (Seller): 0x2514844F312c02Ae3C9d4fEb40db4eC8830b6844
+  User2 (Buyer):  0x0994b358dC0a58Dd2bD3cc222ef8ab6F1eB7BFEb
+
+═══════════════════════════════════════════════════════════════
+  [Setup] Minting NFT and DOT
+═══════════════════════════════════════════════════════════════
+
+  ✓ Minted NFT region 205 to user1
+  ✓ Minted 653063.686142981317144419 DOT to user1
+  ✓ Minted 1420960.563857018682855568 DOT to user2
+
+═══════════════════════════════════════════════════════════════
+  [Test 1] User1 creates ask order
+═══════════════════════════════════════════════════════════════
+
+  Spot price: 5.0 DOT
+  Strike price: 6.0 DOT (within ±50% band)
+  Delivery block: 6639182 (current: 6629182)
+
+  ✓ createAsk successful! Tx: 0x87b2c15b411c5bf61241c4dadea30f1213a90a7a080583e80817d5f1fb22f627
+  Order 52 created:
+    Seller: 0x2514844F312c02Ae3C9d4fEb40db4eC8830b6844
+    Region: 205
+    Strike: 6.0 DOT
+    Delivery: 6639182
+    Status: 0 (0=Open)
+
+═══════════════════════════════════════════════════════════════
+  [Test 2] User2 matches order
+═══════════════════════════════════════════════════════════════
+
+  Matching order 52...
+  User2 balance before: 1420960.563857018682855568 DOT
+
+  ✓ matchOrder successful! Tx: 0xbabb6ee661124eaef9f838bb000cb6703c4dcf5f8d1b87dd1b0ebc07ed6411f6
+  Order 52 after match:
+    Buyer: 0x0994b358dC0a58Dd2bD3cc222ef8ab6F1eB7BFEb
+    Status: 1 (1=Matched)
+  User2 balance after: 1420954.563857018682855568 DOT
+  ForwardMarket balance: 36.0 DOT
+  Expected ForwardMarket balance: 6.0 DOT
+
+
+╔══════════════════════════════════════════════════════════════╗
+║              ForwardMarket Test Complete                  ║
+╚══════════════════════════════════════════════════════════════╝
+

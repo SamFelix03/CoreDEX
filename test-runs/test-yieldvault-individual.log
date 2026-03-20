@@ -1,0 +1,51 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║         YieldVault Individual Test (2 Users)             ║
+╚══════════════════════════════════════════════════════════════╝
+
+  User1 (Depositor/Lender): 0x2514844F312c02Ae3C9d4fEb40db4eC8830b6844
+  User2 (Borrower):        0x0994b358dC0a58Dd2bD3cc222ef8ab6F1eB7BFEb
+
+═══════════════════════════════════════════════════════════════
+  [Setup] Minting NFT and DOT
+═══════════════════════════════════════════════════════════════
+
+  ✓ Minted NFT region 203 to user1
+  ✓ Minted 633063.598914385053715534 DOT to user1
+  ✓ Minted 1400960.651085614946284453 DOT to user2
+
+═══════════════════════════════════════════════════════════════
+  [Test 1] User1 deposits region
+═══════════════════════════════════════════════════════════════
+
+  ✓ depositRegion successful! Tx: 0x8a1425bbaaa15fde0031aa4122854a6164728fbbf1fd2b281b97d8e08d666dd9
+  NFT owner after deposit: 0x790294681B3A8475DcF791f158D42Eb961dD8553
+  Expected: 0x790294681B3A8475DcF791f158D42Eb961dD8553
+  Total deposits: 11
+
+═══════════════════════════════════════════════════════════════
+  [Test 2] User2 borrows region
+═══════════════════════════════════════════════════════════════
+
+  Borrowing region for 1000 blocks (1 core)...
+  User2 balance before: 1400960.651085614946284453 DOT
+
+  Borrowing 1 core(s) for 1000 blocks...
+
+  ✓ borrowRegion successful! Tx: 0x8788a2f1fa4fc2bf031dc1672752c8a0b99edbbd353e603d923f9627cc1d9f3a
+  Loan 9 created:
+    Borrower: 0x0994b358dC0a58Dd2bD3cc222ef8ab6F1eB7BFEb
+    Region: 196
+    Duration: 1000 blocks
+    Fee: 0.0 DOT
+    Expiry: undefined
+  User2 balance after: 1400960.651085614946284453 DOT
+  Vault balance: 0.000000000000000013 DOT
+
+
+╔══════════════════════════════════════════════════════════════╗
+║              YieldVault Test Complete                     ║
+╚══════════════════════════════════════════════════════════════╝
+
+Note: Return and withdraw tests require waiting for loan expiry, skipping for now.
+

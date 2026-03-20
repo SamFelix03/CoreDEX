@@ -1,0 +1,56 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║         OptionsEngine Individual Test (2 Users)            ║
+╚══════════════════════════════════════════════════════════════╝
+
+  User1 (Writer): 0x2514844F312c02Ae3C9d4fEb40db4eC8830b6844
+  User2 (Buyer/Holder): 0x0994b358dC0a58Dd2bD3cc222ef8ab6F1eB7BFEb
+
+═══════════════════════════════════════════════════════════════
+  [Setup] Minting NFT and DOT
+═══════════════════════════════════════════════════════════════
+
+  ✓ Minted NFT region 204 to user1
+  ✓ Minted 643063.598914385053715534 DOT to user1
+  ✓ Minted 1410960.651085614946284453 DOT to user2
+
+═══════════════════════════════════════════════════════════════
+  [Test 1] User1 writes call option
+═══════════════════════════════════════════════════════════════
+
+  Spot price: 5.0 DOT
+  Strike price: 6.0 DOT (within ±50% band)
+  Expiry block: 6639169 (current: 6629169)
+
+  ✓ writeCall successful! Tx: 0x3ba3aa1378237c2cda2adcac18a5413de5aec1bea99b57cd4742b92a17c2a373
+  Option 14 created:
+    Writer: 0x2514844F312c02Ae3C9d4fEb40db4eC8830b6844
+    Region: 204
+    Strike: 6.0 DOT
+    Expiry: 6639169
+    Premium: 0.087228596263428885 DOT
+    Status: 0 (0=Open)
+
+═══════════════════════════════════════════════════════════════
+  [Test 2] User2 buys option
+═══════════════════════════════════════════════════════════════
+
+  Buying option 14...
+  Premium: 0.087228596263428885 DOT
+  User2 balance before: 1410960.651085614946284453 DOT
+
+  ✓ buyOption successful! Tx: 0x944d01a11c090eae2706131efa24ba1b3f9b19db3f912f988df01807a5dd9784
+  Option 14 after purchase:
+    Holder: 0x0994b358dC0a58Dd2bD3cc222ef8ab6F1eB7BFEb
+    Status: 0 (1=Active)
+  User2 balance after: 1410960.563857018682855568 DOT
+  User1 balance after: 643063.686142981317144419 DOT
+  Premium should have been transferred to user1
+
+
+╔══════════════════════════════════════════════════════════════╗
+║              OptionsEngine Test Complete                  ║
+╚══════════════════════════════════════════════════════════════╝
+
+Note: Exercise test requires waiting for expiry block, skipping for now.
+
