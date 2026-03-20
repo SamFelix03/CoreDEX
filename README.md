@@ -71,93 +71,302 @@ Use [Blockscout (Polkadot Testnet)](https://blockscout-testnet.polkadot.io/) for
 
 ---
 
-## How Polkadot Hub’s architecture enables CoreDEX
+## How Polkadot Hub's architecture enables CoreDEX
 
-This stack is **not** a generic “EVM dApp ported to another chain.” It depends on Hub-specific execution and precompiles.
+This section is the architecture deep-dive for why CoreDEX is viable on Polkadot Hub and what happens end-to-end at execution time.
 
-### Cross-VM Solidity ↔ PVM
+At a high level, CoreDEX needs all three of these properties at once:
 
-`pallet-revive` lets an EVM contract treat a PVM contract like any other address: **cross-VM calls reuse standard ABI encoding**. The options engine pulls `spotPrice()` and `impliedVolatility()` from the oracle, then calls `price_option` on the pricing module—all via `staticcall`, which the runtime routes to PolkaVM when the target is a PVM program.
+1. **Expressive product state machines** (forwards, options, vault lending) with strict invariants.
+2. **Deterministic pricing/oracle computation** that is too awkward or expensive for EVM-only arithmetic.
+3. **Delivery-capable settlement** that can drive real cross-chain execution (not only local balance accounting).
 
-Relevant implementation ([OptionsEngine.sol](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/contracts/OptionsEngine.sol)):
+Polkadot Hub provides a rare combination that matches those requirements:
 
-```359:394:smart-contracts/contracts/OptionsEngine.sol
-    function _getPremium(
-        uint128 strike,
-        uint32  expiryBlock,
-        uint8   optionType
-    ) internal view returns (uint128 premium) {
-        // Get spot price and volatility from CoretimeOracle
-        address oracleAddr = registry.resolve(KEY_CORETIME_ORACLE);
+- EVM contracts for protocol orchestration.
+- Cross-VM EVM <-> PVM calls under `pallet-revive`.
+- Runtime precompiles (especially XCM) callable from contracts.
+- Native cross-chain message execution for settlement semantics.
 
-        (bool spotSuccess, bytes memory spotResult) = oracleAddr.staticcall(
-            abi.encodeWithSignature("spotPrice()")
-        );
-        ...
-        (bool volSuccess, bytes memory volResult) = oracleAddr.staticcall(
-            abi.encodeWithSignature("impliedVolatility()")
-        );
-        ...
-        address pricingAddr = registry.resolve(KEY_PRICING_MODULE);
-        bytes memory calldata_ = abi.encodeWithSignature(
-            "price_option(uint128,uint128,uint32,uint64,uint8)",
-            spotPrice,
-            strike,
-            expiryBlock - uint32(block.number),
-            volatility,
-            optionType
-        );
+CoreDEX is intentionally built to map each responsibility to the correct layer.
 
-        (bool success, bytes memory result) = pricingAddr.staticcall(calldata_);
-        ...
-        (premium, ) = abi.decode(result, (uint128, uint128));
-    }
-```
+### 1) Layered architecture and responsibility split
 
-The PVM side exposes the same selectors and return layout as Solidity would; see [pricing_module.rs](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/rust-contracts/src/pricing_module.rs) (`SEL_PRICE_OPTION`, `handle_price_option`, ABI-encoded returns).
+CoreDEX is not an "EVM app with add-ons"; it is a layered system.
 
-### PVM Rust modules (oracle and pricing)
+#### A. EVM orchestration layer (Solidity)
 
-- **[coretime_oracle.rs](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/rust-contracts/src/coretime_oracle.rs)** — Documented path to **Broker pallet storage reads** in production; the mock build uses contract storage and fixed defaults to emulate oracle outputs while preserving **cross-VM callability** and selector compatibility (see module header: `spotPrice`, `impliedVolatility`, etc.).
-- **[pricing_module.rs](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/rust-contracts/src/pricing_module.rs)** — Black-Scholes-style pricing in a tight RISC-V loop; avoids EVM costs for sqrt / norm-like math paths described in [CROSS_VM_ARCHITECTURE.md](https://github.com/SamFelix03/coreDEX/blob/main/CROSS_VM_ARCHITECTURE.md).
+Primary contracts in `smart-contracts/contracts`:
 
-Reference precompile-style Rust in [pvm-modules](https://github.com/SamFelix03/coreDEX/tree/main/pvm-modules) (e.g. `precompiles/`).
+- `CoreDexRegistry`
+- `CoretimeLedger`
+- `ForwardMarket`
+- `OptionsEngine`
+- `YieldVault`
+- `SettlementExecutor`
 
-### XCM precompile (real runtime hook)
+What this layer owns:
 
-[SettlementExecutor.sol](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/contracts/SettlementExecutor.sol) pins the **canonical XCM precompile** and dispatches SCALE-encoded programs through it:
+- user-facing lifecycle transitions (create/match/cancel/settle, write/buy/exercise/expire, deposit/borrow/withdraw/claim)
+- escrow coordination
+- protocol pause controls
+- governance address routing
+- global consistency constraints via ledger locking
 
-```43:47:smart-contracts/contracts/SettlementExecutor.sol
-    /// @notice XCM Precompile — REAL Polkadot Hub precompile address.
-    ///         This is the canonical address provided by the Polkadot runtime.
-    ///         See: https://docs.polkadot.com/develop/smart-contracts/precompiles/xcm-precompile/
-    address public constant XCM_PRECOMPILE =
-        0x00000000000000000000000000000000000a0000;
-```
+What this layer intentionally does **not** own:
 
-```365:376:smart-contracts/contracts/SettlementExecutor.sol
-    function _dispatchNFTDelivery(uint128 regionId, address buyer)
-        internal
-        returns (bytes32 xcmHash)
-    {
-        bytes memory xcmProgram = _buildNFTDeliveryXcm(regionId, buyer);
+- heavy pricing engines
+- deep runtime data read paths
+- raw cross-chain transport internals
 
-        bool success = IXcmPrecompile(XCM_PRECOMPILE)
-            .execute(xcmProgram, DEFAULT_REF_TIME);
-```
+#### B. PVM compute/data layer (Rust contracts in this repo)
 
-That pattern is what ties **contract escrow on Hub** to **cross-chain delivery** of the underlying coretime NFT representation. Interface: [IXcmPrecompile.sol](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/contracts/interfaces/IXcmPrecompile.sol).
+Current deployment uses PVM Rust contracts that expose Solidity-compatible ABI surfaces:
 
-### Assets path (testnet vs production)
+- `CoretimeOracle` (spot/volatility data surface)
+- `PricingModule` (premium/IV compute surface)
+- `CoretimeNFT` mock (region NFT interface)
+- `MockAssets` (DOT/asset-like transfer interface)
 
-EVM contracts use [IAssetsPrecompile.sol](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/contracts/interfaces/IAssetsPrecompile.sol) against **`MockAssets`** on this deployment; [CROSS_VM_ARCHITECTURE.md](https://github.com/SamFelix03/coreDEX/blob/main/CROSS_VM_ARCHITECTURE.md) notes substitution with the **real Assets precompile** in production while **keeping call sites stable**.
+These are called from EVM with normal ABI calls; runtime routes execution to PVM based on target address type.
 
-### Global encumbrance ledger
+#### C. Runtime precompile/system layer
 
-[CoretimeLedger.sol](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/contracts/CoretimeLedger.sol) centralizes **region locks** so a coretime region cannot back a forward, option, and vault position simultaneously (`FORWARD_POSITION`, `OPTION_POSITION`, `VAULT_POSITION`). Every product module must cooperate with this constraint.
+CoreDEX directly depends on canonical runtime capability, especially:
+
+- `XCM precompile` at `0x00000000000000000000000000000000000a0000` for settlement dispatch.
+
+For assets/NFT surfaces, this repository currently uses mocks to demonstrate the flow, but the contract interfaces are shaped for runtime-backed production substitution.
+
+### 2) Exact execution model: what "cross-VM" means here
+
+In Hub's `pallet-revive` model, EVM contracts do not need a separate protocol to call PVM code. They use familiar ABI calls (`call`/`staticcall`) and receive ABI-encoded return data.
+
+That gives CoreDEX two important properties:
+
+1. **Call-site stability**: Solidity business logic remains unchanged whether backend target is mock PVM contract or production runtime-backed surface.
+2. **Atomic local composition**: EVM and PVM calls are composed within one on-chain execution path instead of requiring bridge-like asynchronous indirection for same-chain compute.
+
+Concrete example in `OptionsEngine._getPremium(...)`:
+
+- resolve oracle address from registry
+- `staticcall` `spotPrice()`
+- `staticcall` `impliedVolatility()`
+- resolve pricing module address
+- `staticcall` `price_option(...)`
+- decode `(premium, delta)`
+
+From the caller's perspective this is normal Solidity ABI I/O; from runtime perspective it is cross-VM dispatch under revive.
+
+### 3) The registry as protocol control plane
+
+`CoreDexRegistry` is not just a convenience map; it is the protocol control plane.
+
+It provides:
+
+- address resolution by key (`resolve(bytes32)`)
+- governance-controlled updates
+- timelock path for upgrade safety (`proposeUpdate` + `executeUpdate`)
+- global pause bit consumed by all state mutating modules
+
+Architectural consequence:
+
+- Product modules are **dependency-injected at runtime** via registry keys.
+- Upgrades are operationally centralized and observable.
+- Cross-module rewiring is possible without redeploying every caller.
+
+### 4) The ledger as protocol-wide risk kernel
+
+`CoretimeLedger` is the risk kernel for cross-product correctness.
+
+The critical invariant enforced system-wide:
+
+- one region cannot be simultaneously encumbered across multiple active positions.
+
+It tracks:
+
+- region lock state
+- locker address
+- position type (`FORWARD`, `OPTION`, `VAULT`)
+- margin balance by account
+- open position counts
+
+Every product module must cooperate with this ledger. Without this, each module might be locally correct but globally unsafe due to double-encumbrance across products.
+
+### 5) End-to-end call trace by product
+
+#### A. Forward product trace
+
+Create ask path:
+
+1. Seller submits `createAsk(regionId, strike, deliveryBlock)`.
+2. `ForwardMarket` validates time and strike constraints.
+3. Oracle spot sanity check is performed through cross-VM call path.
+4. Ledger lock is acquired (`FORWARD_POSITION`).
+5. Region NFT transferred to escrow contract.
+6. Seller position count increments.
+
+Match path:
+
+1. Buyer calls `matchOrder(orderId)`.
+2. Order transitions open -> matched.
+3. DOT transferFrom via assets interface into escrow.
+4. Buyer margin and position count updated in ledger.
+
+Settlement path:
+
+1. At/after delivery block, `settle(orderId)` is called.
+2. `ForwardMarket` delegates settlement orchestration to `SettlementExecutor`.
+3. Executor dispatches XCM program through canonical XCM precompile.
+4. DOT release and lock/margin updates are finalized according to settlement flow.
+
+Cancel/expire path:
+
+- cancel returns NFT and unlocks ledger when still open.
+- expire path after grace window returns assets and cleans state.
+
+#### B. Options product trace
+
+Write call path:
+
+1. Writer calls `writeCall(regionId, strike, expiryBlock)`.
+2. Engine computes premium via `_getPremium` (oracle + pricing cross-VM calls).
+3. Region lock is acquired in ledger (`OPTION_POSITION`).
+4. NFT collateral escrowed.
+
+Write put path:
+
+1. Writer calls `writePut(...)`.
+2. Same premium pipeline.
+3. DOT strike collateral escrowed through assets interface.
+4. Margin bookkeeping updated.
+
+Buy path:
+
+1. Holder calls `buyOption(optionId)`.
+2. Premium is transferred from holder to writer.
+3. Holder position count updated.
+
+Exercise/expire paths:
+
+- European exercise at exact expiry block.
+- Call exercise drives settlement flow and region unlocking.
+- Put exercise handles strike release path.
+- Expire returns collateral according to option type.
+
+#### C. Vault product trace
+
+Deposit path:
+
+1. Depositor transfers region NFT to vault.
+2. Ledger lock acquired (`VAULT_POSITION`).
+3. Receipt/deposit state created.
+
+Borrow path:
+
+1. Borrower requests `(coreCount, durationBlocks)`.
+2. Utilization-aware rate is computed on-chain.
+3. Fee collected via assets interface.
+4. Available region is assigned to loan and marked lent.
+
+Return/claim/withdraw:
+
+- return marks loan complete after duration.
+- epoch finalization snapshots fees and active deposit count.
+- claim distributes pro-rata yield by epoch/receipt.
+- withdraw allowed only when specific region is not lent.
+
+### 6) SettlementExecutor and cross-chain semantics
+
+`SettlementExecutor` is where protocol state meets cross-chain execution.
+
+Core responsibilities:
+
+- construct dispatch payload for delivery
+- call XCM precompile
+- track settlement phase
+- handle callback/failure/recovery logic
+
+Why this matters:
+
+- For blockspace derivatives, settlement is not just transferring a local ERC20 balance.
+- The protocol needs a chain-native path to execute cross-chain delivery intent.
+- XCM precompile provides that runtime-native entry point.
+
+Recovery model:
+
+- Settlements can move through dispatched/confirmed/failed/recovered phases.
+- Timeout-gated recovery protects against unresolved states.
+- Ledger/margin/position cleanup is tied to settlement outcome paths.
+
+### 7) Interface contract and ABI stability across layers
+
+CoreDEX's interoperability contract is ABI stability, not implementation sameness.
+
+Solidity depends on interfaces:
+
+- `ICoretimeNFT`
+- `IAssetsPrecompile`
+- `IXcmPrecompile`
+
+As long as selector/encoding/return layouts remain stable, caller logic can remain intact while underlying provider changes (mock PVM contracts today, runtime-backed implementations tomorrow).
+
+This is a central architectural design decision: preserve EVM business logic while allowing execution substrate evolution.
+
+### 8) Determinism, precision, and computation placement
+
+Pricing/oracle paths are computationally sensitive:
+
+- option premium math
+- iterative numeric routines (e.g., volatility solving)
+- structured fixed-point handling
+
+Placing these in Rust/PVM yields:
+
+- lower compute friction than equivalent EVM-heavy loops
+- tighter control over deterministic numeric behavior
+- cleaner separation between product state logic and math engines
+
+Meanwhile Solidity handles lifecycle state transitions where composability with user actions and protocol invariants matters most.
+
+### 9) Governance and operability model
+
+Governance surface:
+
+- Registry ownership controls routing/pause/update authority.
+- Timelock update mechanism introduces operational delay for safer upgrades.
+
+Operational observability:
+
+- protocol events are standardized in `libraries/Events.sol`.
+- custom errors in `libraries/Errors.sol` make failure reasons machine-decodable and gas-efficient.
+
+This is important for indexers, monitoring, and incident response.
+
+### 10) Security and failure-boundary assumptions
+
+Important assumptions and controls:
+
+1. **Pause everywhere**
+- mutable operations gate on registry pause flag.
+
+2. **Lock discipline**
+- region lock/unlock operations are restricted to registered contracts.
+
+3. **Escrow first**
+- assets are taken into escrow before risk-bearing states are created.
+
+4. **Typed failure paths**
+- explicit custom errors for state preconditions and transfer failures.
+
+5. **Settlement fallback**
+- recovery mechanism for non-finalized cross-chain states.
+
+### 11) Summary: architecture in one sentence
+
+CoreDEX uses Solidity contracts as the deterministic market/state machine, Rust/PVM endpoints as the computation and system-data surface, and runtime XCM precompile as the delivery bridge - all coordinated by a registry-controlled, ledger-enforced risk core.
 
 ---
-
 ## The three products in detail
 
 ### 1. Coretime forwards
@@ -280,3 +489,5 @@ Utilisation curve:
 ## Conclusion
 
 CoreDEX uses **Agile Coretime NFTs** as the underlying, **Solidity** for composable financial logic, **PVM Rust** for oracle and pricing workloads that are awkward or costly on the EVM alone, and the **XCM precompile** to connect contract-level settlement to **real cross-chain execution**. Together, those pieces implement forwards, options, and vault lending in a way that maps to Polkadot’s actual blockspace economics rather than a synthetic off-chain derivative—a combination that is structurally anchored to **Hub cross-VM execution, PolkaVM, and runtime precompiles**.
+
+
