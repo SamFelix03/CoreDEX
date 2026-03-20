@@ -5,13 +5,21 @@ import { Button } from "@/components/ui/Button";
 import { useAccount } from "wagmi";
 import { useForwardOrders, useForwardOrder, useMatchOrder, useCancelOrder, useSettleForward } from "@/hooks/useForwardOrders";
 import { formatDOT, truncateAddress, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
+import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
 
 function OrderRow({ orderId }: { orderId: bigint }) {
   const { order, isLoading } = useForwardOrder(orderId);
   const { address } = useAccount();
-  const { matchOrder, isPending: matchPending } = useMatchOrder();
-  const { cancel, isPending: cancelPending } = useCancelOrder();
-  const { settle, isPending: settlePending } = useSettleForward();
+  const { matchOrder, isPending: matchPending, isSuccess: matchOk, hash: matchHash, reset: resetMatch } =
+    useMatchOrder();
+  const { cancel, isPending: cancelPending, isSuccess: cancelOk, hash: cancelHash, reset: resetCancel } =
+    useCancelOrder();
+  const { settle, isPending: settlePending, isSuccess: settleOk, hash: settleHash, reset: resetSettle } =
+    useSettleForward();
+
+  const successHash =
+    matchOk && matchHash ? matchHash : cancelOk && cancelHash ? cancelHash : settleOk && settleHash ? settleHash : null;
+  const successLabel = matchOk ? "Order matched." : cancelOk ? "Order cancelled." : settleOk ? "Settlement submitted." : null;
 
   if (isLoading || !order) {
     return (
@@ -38,21 +46,57 @@ function OrderRow({ orderId }: { orderId: bigint }) {
         <Badge label={statusLabel} color={statusColor} />
       </td>
       <td className="px-4 py-3">
-        <div className="flex gap-2">
-          {order.status === 0 && !isSeller && (
-            <Button size="sm" onClick={() => matchOrder(order.orderId)} loading={matchPending}>
-              Match
-            </Button>
-          )}
-          {order.status === 0 && isSeller && (
-            <Button size="sm" variant="ghost" onClick={() => cancel(order.orderId)} loading={cancelPending}>
-              Cancel
-            </Button>
-          )}
-          {order.status === 1 && (isSeller || isBuyer) && (
-            <Button size="sm" variant="outline" onClick={() => settle(order.orderId)} loading={settlePending}>
-              Settle
-            </Button>
+        <div className="flex flex-col gap-2 max-w-[220px]">
+          <div className="flex flex-wrap gap-2">
+            {order.status === 0 && !isSeller && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  resetCancel();
+                  resetSettle();
+                  resetMatch();
+                  void matchOrder(order.orderId);
+                }}
+                loading={matchPending}
+              >
+                Match
+              </Button>
+            )}
+            {order.status === 0 && isSeller && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  resetMatch();
+                  resetSettle();
+                  resetCancel();
+                  void cancel(order.orderId);
+                }}
+                loading={cancelPending}
+              >
+                Cancel
+              </Button>
+            )}
+            {order.status === 1 && (isSeller || isBuyer) && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  resetMatch();
+                  resetCancel();
+                  resetSettle();
+                  void settle(order.orderId);
+                }}
+                loading={settlePending}
+              >
+                Settle
+              </Button>
+            )}
+          </div>
+          {successHash && successLabel && (
+            <TxSuccessWithExplorer hash={successHash} className="!p-2 !text-[10px]">
+              <span>{successLabel}</span>
+            </TxSuccessWithExplorer>
           )}
         </div>
       </td>

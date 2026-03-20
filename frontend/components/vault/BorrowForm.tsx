@@ -1,51 +1,52 @@
 "use client";
+
 import { useMemo, useState } from "react";
-import { addHours, format } from "date-fns";
+import { useChainId } from "wagmi";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
-import { useVaultBorrow } from "@/hooks/useVault";
-import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
-import { blocksToTime } from "@/lib/utils";
+import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
+import { useVaultBorrow, useVaultStats } from "@/hooks/useVault";
+import { ASSET_HUB_CHAIN_ID } from "@/constants";
+import { formatTransactionError } from "@/lib/walletError";
+import { computeVaultBorrowFee } from "@/lib/vaultBorrow";
+import { formatDOT } from "@/lib/utils";
+
+/** Defaults match `smart-contracts/scripts/test-yieldvault-individual.ts` (`coreCount = 1`, `durationBlocks = 1000`). */
+const DEFAULT_CORE = "1";
+const DEFAULT_DURATION_BLOCKS = "1000";
 
 export function BorrowForm() {
-  const [coreCount, setCoreCount] = useState("");
-  const [returnWhen, setReturnWhen] = useState(() =>
-    format(addHours(new Date(), 24 * 7), "yyyy-MM-dd'T'HH:mm")
-  );
+  const [coreCount, setCoreCount] = useState(DEFAULT_CORE);
+  const [durationBlocks, setDurationBlocks] = useState(DEFAULT_DURATION_BLOCKS);
 
-  const targetMs = useMemo(() => {
-    if (!returnWhen?.trim()) return null;
-    const t = new Date(returnWhen).getTime();
-    return Number.isFinite(t) ? t : null;
-  }, [returnWhen]);
+  const chainId = useChainId();
+  const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
 
-  const {
-    estimatedBlock: dueBlock,
-    error: blockEstError,
-    isLoadingHead,
-    latestBlockNumber,
-  } = useEstimatedRelayBlock(targetMs);
+  const { stats } = useVaultStats();
+  const { borrow, isPending, isSuccess, error, reset, hash } = useVaultBorrow();
 
-  const durationBlocks =
-    dueBlock !== null && latestBlockNumber !== null && dueBlock > latestBlockNumber
-      ? dueBlock - latestBlockNumber
-      : null;
+  const coreN = Number.parseInt(coreCount.trim(), 10);
+  const durN = Number.parseInt(durationBlocks.trim(), 10);
+  const countsValid =
+    Number.isFinite(coreN) &&
+    Number.isFinite(durN) &&
+    coreN >= 1 &&
+    durN >= 1 &&
+    coreN <= 0xffff_ffff &&
+    durN <= 0xffff_ffff;
 
-  const { borrow, isPending, isSuccess, error, reset } = useVaultBorrow();
+  const previewFee = useMemo(() => {
+    if (!stats || !countsValid) return null;
+    return computeVaultBorrowFee(coreN, durN, stats.lendingRate);
+  }, [stats, countsValid, coreN, durN]);
 
-  const canSubmit =
-    !!coreCount &&
-    durationBlocks !== null &&
-    durationBlocks >= 1n &&
-    !blockEstError &&
-    !isLoadingHead;
+  const canSubmit = countsValid && !wrongChain;
 
   const handleBorrow = async () => {
-    if (!canSubmit || durationBlocks === null) return;
+    if (!canSubmit) return;
     try {
-      await borrow(BigInt(coreCount), durationBlocks);
+      await borrow(BigInt(coreN), BigInt(durN));
     } catch (e) {
       console.error("borrow failed:", e);
     }
@@ -55,50 +56,55 @@ export function BorrowForm() {
     <Card className="animate-slide-in-up">
       <CardHeader label="Borrow Regions" />
       <CardContent className="flex flex-col gap-4">
+        {wrongChain && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            Switch to <span className="font-mono">Polkadot Hub TestNet</span> (chain {ASSET_HUB_CHAIN_ID}).
+          </div>
+        )}
         <Input
-          label="Core Count"
+          label="Core count"
           type="number"
-          placeholder="Number of cores to borrow"
+          min={1}
+          placeholder={DEFAULT_CORE}
           value={coreCount}
           onChange={(e) => {
             reset();
             setCoreCount(e.target.value);
           }}
+          disabled={wrongChain}
         />
-        <FutureRelayTimeInput
-          label="Return by"
-          description="Loan duration is computed as blocks from the current head until this time (~12s per block)."
-          value={returnWhen}
-          onChange={(v) => {
+        <Input
+          label="Duration (blocks)"
+          type="number"
+          min={1}
+          placeholder={DEFAULT_DURATION_BLOCKS}
+          value={durationBlocks}
+          onChange={(e) => {
             reset();
-            setReturnWhen(v);
+            setDurationBlocks(e.target.value);
           }}
-          estimatedBlock={dueBlock}
-          estimateError={blockEstError}
-          isLoadingHead={isLoadingHead}
-          latestBlockNumber={latestBlockNumber}
-          showEstimatedBlockLine={false}
+          disabled={wrongChain}
         />
-        {durationBlocks !== null && durationBlocks >= 1n && !blockEstError && (
+        <p className="text-[10px] text-muted-foreground -mt-2 leading-relaxed">
+          Same shape as the Hardhat script: <span className="font-mono">borrow(uint32 coreCount, uint32 durationBlocks)</span>
+          . The wallet may ask you to <strong>approve DOT</strong> for the vault first (lending fee), then confirm{" "}
+          <strong>borrow</strong>.
+        </p>
+        {previewFee !== null && (
           <p className="text-xs text-muted-foreground">
-            Duration sent to contract:{" "}
-            <span className="font-mono text-foreground">{durationBlocks.toString()}</span> blocks
-            (~{blocksToTime(durationBlocks)})
+            Estimated lending fee (from current rate):{" "}
+            <span className="font-mono text-foreground">{formatDOT(previewFee)} DOT</span>
           </p>
         )}
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Borrow Coretime regions from the vault by paying a lending fee. Regions must be returned
-          before the due block derived from your return-by time.
-        </p>
         {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
-            {(error as Error).message?.slice(0, 120)}
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up whitespace-pre-wrap break-words">
+            {formatTransactionError(error)}
           </div>
         )}
         {isSuccess && (
-          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-xs text-green-400 animate-slide-in-up">
-            Borrow successful!
-          </div>
+          <TxSuccessWithExplorer hash={hash}>
+            <span>Borrow confirmed — lending fee paid from your DOT balance (after approval if needed).</span>
+          </TxSuccessWithExplorer>
         )}
         <Button
           variant="outline"

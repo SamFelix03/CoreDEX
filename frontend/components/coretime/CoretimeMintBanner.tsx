@@ -4,12 +4,14 @@ import { useAccount, useChainId } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { useMintCoretimeRegion } from "@/hooks/useMintCoretimeRegion";
+import { getTxExplorerUrl } from "@/lib/explorer";
 
 export function CoretimeMintBanner() {
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
   const { mint, isPending, isSuccess, error, reset, mintedTokenId, hash } = useMintCoretimeRegion();
+  const txUrl = hash ? getTxExplorerUrl(chainId, hash) : null;
 
   const handleMint = async () => {
     reset();
@@ -47,7 +49,20 @@ export function CoretimeMintBanner() {
             <span className="font-mono text-sm text-white">{mintedTokenId.toString()}</span>
           </div>
           {hash && (
-            <div className="text-[10px] text-green-400/80 font-mono break-all">Tx: {hash}</div>
+            <div className="text-[10px]">
+              {txUrl ? (
+                <a
+                  href={txUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline font-mono break-all hover:opacity-90"
+                >
+                  View transaction on explorer ↗
+                </a>
+              ) : (
+                <span className="text-green-400/80 font-mono break-all">Tx: {hash}</span>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -57,7 +72,19 @@ export function CoretimeMintBanner() {
             Mint confirmed, but the region ID wasn&apos;t resolved (simulation may have failed earlier, or logs
             don&apos;t match ERC-721). Check the transaction in your wallet or explorer.
           </p>
-          {hash && <p className="font-mono text-[10px] break-all opacity-90">{hash}</p>}
+          {hash &&
+            (txUrl ? (
+              <a
+                href={txUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline font-mono text-[10px] break-all"
+              >
+                View transaction on explorer ↗
+              </a>
+            ) : (
+              <p className="font-mono text-[10px] break-all opacity-90">{hash}</p>
+            ))}
         </div>
       )}
       <Button

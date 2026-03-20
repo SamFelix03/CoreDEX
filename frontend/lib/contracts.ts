@@ -6,6 +6,7 @@ import {
   YIELD_VAULT_ADDRESS,
   SETTLEMENT_ADDRESS,
   CORETIME_ORACLE_ADDRESS,
+  ASSETS_PRECOMPILE_ADDRESS,
 } from "@/constants";
 import {
   REGISTRY_ABI,
@@ -14,6 +15,7 @@ import {
   OPTIONS_ENGINE_ABI,
   YIELD_VAULT_ABI,
   SETTLEMENT_ABI,
+  ASSETS_PRECOMPILE_ABI,
 } from "@/types/contracts";
 
 export const registryContract = {
@@ -39,6 +41,11 @@ export const optionsEngineContract = {
 export const yieldVaultContract = {
   address: YIELD_VAULT_ADDRESS,
   abi:     YIELD_VAULT_ABI,
+} as const;
+
+export const assetsPrecompileContract = {
+  address: ASSETS_PRECOMPILE_ADDRESS,
+  abi:     ASSETS_PRECOMPILE_ABI,
 } as const;
 
 export const settlementContract = {

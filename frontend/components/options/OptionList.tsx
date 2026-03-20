@@ -5,12 +5,22 @@ import { Button } from "@/components/ui/Button";
 import { useAccount } from "wagmi";
 import { useOptionsData, useOption, useBuyOption, useExerciseOption } from "@/hooks/useOptions";
 import { formatDOT, truncateAddress, OPTION_STATUS_LABELS, OPTION_STATUS_COLORS } from "@/lib/utils";
+import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
 
 function OptionRow({ optionId }: { optionId: bigint }) {
   const { option, isLoading } = useOption(optionId);
   const { address } = useAccount();
-  const { buyOption, isPending: buyPending } = useBuyOption();
-  const { exercise, isPending: exercisePending } = useExerciseOption();
+  const { buyOption, isPending: buyPending, isSuccess: buyOk, hash: buyHash, reset: resetBuy } = useBuyOption();
+  const {
+    exercise,
+    isPending: exercisePending,
+    isSuccess: exerciseOk,
+    hash: exerciseHash,
+    reset: resetExercise,
+  } = useExerciseOption();
+
+  const successHash = buyOk && buyHash ? buyHash : exerciseOk && exerciseHash ? exerciseHash : null;
+  const successLabel = buyOk ? "Option purchased." : exerciseOk ? "Exercise submitted." : null;
 
   if (isLoading || !option) {
     return (
@@ -43,16 +53,40 @@ function OptionRow({ optionId }: { optionId: bigint }) {
         <Badge label={statusLabel} color={statusColor} />
       </td>
       <td className="px-4 py-3">
-        <div className="flex gap-2">
-          {option.status === 0 && !isWriter && (
-            <Button size="sm" onClick={() => buyOption(option.optionId)} loading={buyPending}>
-              Buy
-            </Button>
-          )}
-          {option.status === 1 && isHolder && (
-            <Button size="sm" variant="outline" onClick={() => exercise(option.optionId)} loading={exercisePending}>
-              Exercise
-            </Button>
+        <div className="flex flex-col gap-2 max-w-[200px]">
+          <div className="flex flex-wrap gap-2">
+            {option.status === 0 && !isWriter && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  resetExercise();
+                  resetBuy();
+                  void buyOption(option.optionId);
+                }}
+                loading={buyPending}
+              >
+                Buy
+              </Button>
+            )}
+            {option.status === 1 && isHolder && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  resetBuy();
+                  resetExercise();
+                  void exercise(option.optionId);
+                }}
+                loading={exercisePending}
+              >
+                Exercise
+              </Button>
+            )}
+          </div>
+          {successHash && successLabel && (
+            <TxSuccessWithExplorer hash={successHash} className="!p-2 !text-[10px]">
+              <span>{successLabel}</span>
+            </TxSuccessWithExplorer>
           )}
         </div>
       </td>

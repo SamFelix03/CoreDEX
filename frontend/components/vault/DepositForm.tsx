@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useVaultDeposit } from "@/hooks/useVault";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
+import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
+import { formatTransactionError } from "@/lib/walletError";
 
 export function DepositForm() {
   const [regionId, setRegionId] = useState("");
   const chainId = useChainId();
   const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
-  const { deposit, isPending, isSuccess, error, reset } = useVaultDeposit();
+  const { deposit, isPending, isSuccess, error, reset, hash } = useVaultDeposit();
 
   const handleDeposit = async () => {
     if (!regionId) return;
@@ -46,14 +48,14 @@ export function DepositForm() {
           Coretime NFT token id to deposit; you receive a receipt for yield and later withdrawal.
         </p>
         {error && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
-            {(error as Error).message?.slice(0, 120)}
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up whitespace-pre-wrap break-words">
+            {formatTransactionError(error)}
           </div>
         )}
         {isSuccess && (
-          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-xs text-green-400 animate-slide-in-up">
-            Region deposited successfully!
-          </div>
+          <TxSuccessWithExplorer hash={hash}>
+            <span>Region deposited successfully.</span>
+          </TxSuccessWithExplorer>
         )}
         <Button
           onClick={handleDeposit}

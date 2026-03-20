@@ -11,6 +11,7 @@ import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
 import { ASSET_HUB_CHAIN_ID, UI_STRIKE_MAX_WEI, UI_STRIKE_MIN_WEI } from "@/constants";
 import { finalizeEvmFutureBlockForTx } from "@/lib/relayBlockEstimate";
 import { formatTransactionError } from "@/lib/walletError";
+import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
 import { formatDOT, parseDOT } from "@/lib/utils";
 
 export function CreateAskForm() {
@@ -33,7 +34,7 @@ export function CreateAskForm() {
     latestBlockNumber,
   } = useEstimatedRelayBlock(targetMs);
 
-  const { createAsk, isPending, isSuccess, error, reset } = useCreateAsk();
+  const { createAsk, isPending, isSuccess, error, reset, hash } = useCreateAsk();
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
@@ -155,9 +156,9 @@ export function CreateAskForm() {
           </div>
         )}
         {isSuccess && (
-          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-xs text-green-400 animate-slide-in-up">
-            Forward ask created successfully!
-          </div>
+          <TxSuccessWithExplorer hash={hash}>
+            <span>Forward ask created successfully.</span>
+          </TxSuccessWithExplorer>
         )}
         <Button
           onClick={handleSubmit}

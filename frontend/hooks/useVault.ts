@@ -1,9 +1,12 @@
-import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
-import { yieldVaultContract } from "@/lib/contracts";
+import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useAccount, usePublicClient } from "wagmi";
+import { maxUint256 } from "viem";
+import { yieldVaultContract, assetsPrecompileContract } from "@/lib/contracts";
 import { heavyTxGas } from "@/lib/txGas";
 import { useCallback } from "react";
 import type { VaultStats } from "@/types/protocol";
 import { uint32Arg } from "@/lib/utils";
+import { ASSET_HUB_CHAIN_ID } from "@/constants";
+import { computeVaultBorrowFee } from "@/lib/vaultBorrow";
 
 export function useVaultStats() {
   const { data, isLoading, error } = useReadContracts({
@@ -92,6 +95,7 @@ export function useVaultWithdraw() {
 
 export function useVaultBorrow() {
   const { address } = useAccount();
+  const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
@@ -99,17 +103,50 @@ export function useVaultBorrow() {
     query: { enabled: !!hash },
   });
 
+  /**
+   * Same call shape as scripts (`borrow(coreCount, durationBlocks)` with uint32 args).
+   * On-chain fee is pulled via `IAssetsPrecompile.transferFrom` — approve vault on DOT precompile first
+   * when allowance is below the computed fee (matches real Asset Hub; mocks may not enforce allowance).
+   */
   const borrow = useCallback(
     async (coreCount: bigint, durationBlocks: bigint) => {
       if (!address) throw new Error("Wallet not connected");
+      if (!publicClient) throw new Error("RPC client unavailable");
+
+      const c32 = uint32Arg(coreCount);
+      const d32 = uint32Arg(durationBlocks);
+
+      const rate = await publicClient.readContract({
+        ...yieldVaultContract,
+        functionName: "currentLendingRate",
+      });
+
+      const fee = computeVaultBorrowFee(c32, d32, rate as bigint);
+
+      const allowance = await publicClient.readContract({
+        ...assetsPrecompileContract,
+        functionName: "allowance",
+        args: [address, yieldVaultContract.address],
+      });
+
+      if ((allowance as bigint) < fee) {
+        const approveHash = await writeContractAsync({
+          ...assetsPrecompileContract,
+          functionName: "approve",
+          args: [yieldVaultContract.address, maxUint256],
+          ...heavyTxGas(),
+        });
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+
       return writeContractAsync({
         ...yieldVaultContract,
         functionName: "borrow",
-        args: [uint32Arg(coreCount), uint32Arg(durationBlocks)],
+        args: [c32, d32],
         ...heavyTxGas(),
       });
     },
-    [address, writeContractAsync]
+    [address, publicClient, writeContractAsync]
   );
 
   return { borrow, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };

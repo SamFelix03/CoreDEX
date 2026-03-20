@@ -11,6 +11,7 @@ import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
 import { ASSET_HUB_CHAIN_ID, UI_STRIKE_MAX_WEI, UI_STRIKE_MIN_WEI } from "@/constants";
 import { finalizeEvmFutureBlockForTx } from "@/lib/relayBlockEstimate";
 import { formatTransactionError } from "@/lib/walletError";
+import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
 import { formatDOT, parseDOT, cn } from "@/lib/utils";
 
 export function WriteOptionForm() {
@@ -34,13 +35,26 @@ export function WriteOptionForm() {
     latestBlockNumber,
   } = useEstimatedRelayBlock(targetMs);
 
-  const { writeCall, isPending: callPending, isSuccess: callSuccess, error: callError, reset: resetCall } =
-    useWriteCall();
-  const { writePut, isPending: putPending, isSuccess: putSuccess, error: putError, reset: resetPut } =
-    useWritePut();
+  const {
+    writeCall,
+    isPending: callPending,
+    isSuccess: callSuccess,
+    error: callError,
+    reset: resetCall,
+    hash: callHash,
+  } = useWriteCall();
+  const {
+    writePut,
+    isPending: putPending,
+    isSuccess: putSuccess,
+    error: putError,
+    reset: resetPut,
+    hash: putHash,
+  } = useWritePut();
 
   const isPending = optionType === "call" ? callPending : putPending;
   const isSuccess = optionType === "call" ? callSuccess : putSuccess;
+  const successHash = optionType === "call" ? callHash : putHash;
   const error = optionType === "call" ? callError : putError;
 
   const chainId = useChainId();
@@ -193,9 +207,9 @@ export function WriteOptionForm() {
           </div>
         )}
         {isSuccess && (
-          <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-xs text-green-400 animate-slide-in-up">
-            Option written successfully!
-          </div>
+          <TxSuccessWithExplorer hash={successHash}>
+            <span>Option written successfully.</span>
+          </TxSuccessWithExplorer>
         )}
         <Button
           onClick={handleSubmit}

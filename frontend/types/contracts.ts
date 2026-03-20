@@ -188,3 +188,21 @@ export const LEDGER_ABI = [
   { name: "RegionLocked",    type: "event", inputs: [{ name: "regionId", type: "uint128", indexed: true }, { name: "lockedBy", type: "address", indexed: true }, { name: "positionType", type: "bytes32", indexed: false }] },
   { name: "RegionUnlocked",  type: "event", inputs: [{ name: "regionId", type: "uint128", indexed: true }, { name: "unlockedBy", type: "address", indexed: true }] },
 ] as const satisfies Abi;
+
+// ─── Asset Hub DOT precompile (ERC-20-style; `YieldVault.borrow` uses `transferFrom`) ───
+export const ASSETS_PRECOMPILE_ABI = [
+  {
+    name:         "approve",
+    type:         "function",
+    stateMutability: "nonpayable",
+    inputs:       [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }],
+    outputs:      [{ type: "bool" }],
+  },
+  {
+    name:         "allowance",
+    type:         "function",
+    stateMutability: "view",
+    inputs:       [{ name: "owner", type: "address" }, { name: "spender", type: "address" }],
+    outputs:      [{ type: "uint256" }],
+  },
+] as const satisfies Abi;
