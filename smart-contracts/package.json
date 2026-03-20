@@ -12,7 +12,9 @@
     "deploy:pvm": "hardhat run scripts/deploy-pvm-mocks.ts --network localhost",
     "deploy:pvm:testnet": "hardhat run scripts/deploy-pvm-mocks.ts --network polkadotTestNet",
     "simulate": "hardhat run scripts/simulate-coredex.ts --network localhost",
-    "simulate:fork": "hardhat run scripts/simulate-coredex.ts --network localhost"
+    "simulate:fork": "hardhat run scripts/simulate-coredex.ts --network localhost",
+    "registry:sync-deployed": "hardhat run scripts/register-deployed-in-registry.ts --network polkadotTestNet",
+    "demo:mint-region": "hardhat run scripts/mint-demo-region.ts --network polkadotTestNet"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
