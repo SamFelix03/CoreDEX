@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import type { Option } from "@/types/protocol";
 import { uint32Arg } from "@/lib/utils";
 import { parseOptionRead } from "@/lib/decodeEvmStructs";
+import { hubWaitForTransactionReceiptProps } from "@/lib/txReceipt";
 
 export function useOptionsData(address?: `0x${string}`) {
   const { data: writerOptionIds } = useReadContract({
@@ -49,10 +50,11 @@ export function useOption(optionId: bigint | undefined) {
 
 export function useWriteCall() {
   const { address } = useAccount();
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -71,15 +73,25 @@ export function useWriteCall() {
     [address, writeContractAsync]
   );
 
-  return { writeCall, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return {
+    writeCall,
+    hash,
+    isPending: isWritePending || isConfirming,
+    isWritePending,
+    isConfirming,
+    isSuccess,
+    error: writeError ?? receiptError,
+    reset,
+  };
 }
 
 export function useWritePut() {
   const { address } = useAccount();
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -98,15 +110,25 @@ export function useWritePut() {
     [address, writeContractAsync]
   );
 
-  return { writePut, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return {
+    writePut,
+    hash,
+    isPending: isWritePending || isConfirming,
+    isWritePending,
+    isConfirming,
+    isSuccess,
+    error: writeError ?? receiptError,
+    reset,
+  };
 }
 
 export function useBuyOption() {
   const { address } = useAccount();
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -125,15 +147,25 @@ export function useBuyOption() {
     [address, writeContractAsync]
   );
 
-  return { buyOption, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return {
+    buyOption,
+    hash,
+    isPending: isWritePending || isConfirming,
+    isWritePending,
+    isConfirming,
+    isSuccess,
+    error: writeError ?? receiptError,
+    reset,
+  };
 }
 
 export function useExerciseOption() {
   const { address } = useAccount();
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -152,5 +184,14 @@ export function useExerciseOption() {
     [address, writeContractAsync]
   );
 
-  return { exercise, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return {
+    exercise,
+    hash,
+    isPending: isWritePending || isConfirming,
+    isWritePending,
+    isConfirming,
+    isSuccess,
+    error: writeError ?? receiptError,
+    reset,
+  };
 }

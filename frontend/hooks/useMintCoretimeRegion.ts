@@ -6,6 +6,7 @@ import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { CORETIME_NFT_ABI, coretimeNftContract } from "@/lib/coretimeNft";
 import { parseMintedErc721TokenIdFromReceipt } from "@/lib/parseMintedNftFromReceipt";
 import { heavyTxGas } from "@/lib/txGas";
+import { hubWaitForTransactionReceiptProps } from "@/lib/txReceipt";
 
 /**
  * Same as Hardhat scripts (`mint-demo-region.ts`, `test-forwardmarket-individual.ts`):
@@ -29,7 +30,7 @@ export function useMintCoretimeRegion() {
     error: receiptError,
   } = useWaitForTransactionReceipt({
     hash,
-    chainId: ASSET_HUB_CHAIN_ID,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 

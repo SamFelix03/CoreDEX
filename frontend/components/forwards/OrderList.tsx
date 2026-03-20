@@ -10,12 +10,30 @@ import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
 function OrderRow({ orderId }: { orderId: bigint }) {
   const { order, isLoading } = useForwardOrder(orderId);
   const { address } = useAccount();
-  const { matchOrder, isPending: matchPending, isSuccess: matchOk, hash: matchHash, reset: resetMatch } =
-    useMatchOrder();
-  const { cancel, isPending: cancelPending, isSuccess: cancelOk, hash: cancelHash, reset: resetCancel } =
-    useCancelOrder();
-  const { settle, isPending: settlePending, isSuccess: settleOk, hash: settleHash, reset: resetSettle } =
-    useSettleForward();
+  const {
+    matchOrder,
+    isWritePending: matchWritePending,
+    isConfirming: matchConfirming,
+    isSuccess: matchOk,
+    hash: matchHash,
+    reset: resetMatch,
+  } = useMatchOrder();
+  const {
+    cancel,
+    isWritePending: cancelWritePending,
+    isConfirming: cancelConfirming,
+    isSuccess: cancelOk,
+    hash: cancelHash,
+    reset: resetCancel,
+  } = useCancelOrder();
+  const {
+    settle,
+    isWritePending: settleWritePending,
+    isConfirming: settleConfirming,
+    isSuccess: settleOk,
+    hash: settleHash,
+    reset: resetSettle,
+  } = useSettleForward();
 
   const successHash =
     matchOk && matchHash ? matchHash : cancelOk && cancelHash ? cancelHash : settleOk && settleHash ? settleHash : null;
@@ -57,9 +75,11 @@ function OrderRow({ orderId }: { orderId: bigint }) {
                   resetMatch();
                   void matchOrder(order.orderId);
                 }}
-                loading={matchPending}
+                loading={matchWritePending}
+                disabled={matchWritePending || matchConfirming}
+                title={matchConfirming && !matchWritePending ? "Waiting for block confirmation…" : undefined}
               >
-                Match
+                {matchConfirming && !matchWritePending ? "Confirming…" : "Match"}
               </Button>
             )}
             {order.status === 0 && isSeller && (
@@ -72,9 +92,11 @@ function OrderRow({ orderId }: { orderId: bigint }) {
                   resetCancel();
                   void cancel(order.orderId);
                 }}
-                loading={cancelPending}
+                loading={cancelWritePending}
+                disabled={cancelWritePending || cancelConfirming}
+                title={cancelConfirming && !cancelWritePending ? "Waiting for block confirmation…" : undefined}
               >
-                Cancel
+                {cancelConfirming && !cancelWritePending ? "Confirming…" : "Cancel"}
               </Button>
             )}
             {order.status === 1 && (isSeller || isBuyer) && (
@@ -87,9 +109,11 @@ function OrderRow({ orderId }: { orderId: bigint }) {
                   resetSettle();
                   void settle(order.orderId);
                 }}
-                loading={settlePending}
+                loading={settleWritePending}
+                disabled={settleWritePending || settleConfirming}
+                title={settleConfirming && !settleWritePending ? "Waiting for block confirmation…" : undefined}
               >
-                Settle
+                {settleConfirming && !settleWritePending ? "Confirming…" : "Settle"}
               </Button>
             )}
           </div>

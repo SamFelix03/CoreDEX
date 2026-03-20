@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import type { ForwardOrder } from "@/types/protocol";
 import { uint32Arg } from "@/lib/utils";
 import { parseForwardOrderRead } from "@/lib/decodeEvmStructs";
+import { hubWaitForTransactionReceiptProps } from "@/lib/txReceipt";
 
 export function useForwardOrders(address?: `0x${string}`) {
   const { data: sellerOrderIds } = useReadContract({
@@ -49,10 +50,11 @@ export function useForwardOrder(orderId: bigint | undefined) {
 
 export function useCreateAsk() {
   const { address } = useAccount();
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -71,15 +73,25 @@ export function useCreateAsk() {
     [address, writeContractAsync]
   );
 
-  return { createAsk, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return {
+    createAsk,
+    hash,
+    isPending: isWritePending || isConfirming,
+    isWritePending,
+    isConfirming,
+    isSuccess,
+    error: writeError ?? receiptError,
+    reset,
+  };
 }
 
 export function useMatchOrder() {
   const { address } = useAccount();
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -98,15 +110,25 @@ export function useMatchOrder() {
     [address, writeContractAsync]
   );
 
-  return { matchOrder, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return {
+    matchOrder,
+    hash,
+    isPending: isWritePending || isConfirming,
+    isWritePending,
+    isConfirming,
+    isSuccess,
+    error: writeError ?? receiptError,
+    reset,
+  };
 }
 
 export function useSettleForward() {
   const { address } = useAccount();
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -125,15 +147,25 @@ export function useSettleForward() {
     [address, writeContractAsync]
   );
 
-  return { settle, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return {
+    settle,
+    hash,
+    isPending: isWritePending || isConfirming,
+    isWritePending,
+    isConfirming,
+    isSuccess,
+    error: writeError ?? receiptError,
+    reset,
+  };
 }
 
 export function useCancelOrder() {
   const { address } = useAccount();
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -152,5 +184,14 @@ export function useCancelOrder() {
     [address, writeContractAsync]
   );
 
-  return { cancel, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return {
+    cancel,
+    hash,
+    isPending: isWritePending || isConfirming,
+    isWritePending,
+    isConfirming,
+    isSuccess,
+    error: writeError ?? receiptError,
+    reset,
+  };
 }

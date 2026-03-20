@@ -10,10 +10,18 @@ import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
 function OptionRow({ optionId }: { optionId: bigint }) {
   const { option, isLoading } = useOption(optionId);
   const { address } = useAccount();
-  const { buyOption, isPending: buyPending, isSuccess: buyOk, hash: buyHash, reset: resetBuy } = useBuyOption();
+  const {
+    buyOption,
+    isWritePending: buyWritePending,
+    isConfirming: buyConfirming,
+    isSuccess: buyOk,
+    hash: buyHash,
+    reset: resetBuy,
+  } = useBuyOption();
   const {
     exercise,
-    isPending: exercisePending,
+    isWritePending: exerciseWritePending,
+    isConfirming: exerciseConfirming,
     isSuccess: exerciseOk,
     hash: exerciseHash,
     reset: resetExercise,
@@ -63,9 +71,11 @@ function OptionRow({ optionId }: { optionId: bigint }) {
                   resetBuy();
                   void buyOption(option.optionId);
                 }}
-                loading={buyPending}
+                loading={buyWritePending}
+                disabled={buyWritePending || buyConfirming}
+                title={buyConfirming && !buyWritePending ? "Waiting for block confirmation…" : undefined}
               >
-                Buy
+                {buyConfirming && !buyWritePending ? "Confirming…" : "Buy"}
               </Button>
             )}
             {option.status === 1 && isHolder && (
@@ -77,9 +87,15 @@ function OptionRow({ optionId }: { optionId: bigint }) {
                   resetExercise();
                   void exercise(option.optionId);
                 }}
-                loading={exercisePending}
+                loading={exerciseWritePending}
+                disabled={exerciseWritePending || exerciseConfirming}
+                title={
+                  exerciseConfirming && !exerciseWritePending
+                    ? "Waiting for block confirmation…"
+                    : undefined
+                }
               >
-                Exercise
+                {exerciseConfirming && !exerciseWritePending ? "Confirming…" : "Exercise"}
               </Button>
             )}
           </div>

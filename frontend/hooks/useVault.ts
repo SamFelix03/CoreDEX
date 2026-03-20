@@ -7,6 +7,7 @@ import type { VaultStats } from "@/types/protocol";
 import { uint32Arg } from "@/lib/utils";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { computeVaultBorrowFee } from "@/lib/vaultBorrow";
+import { HUB_TX_RECEIPT_POLL_MS, hubWaitForTransactionReceiptProps } from "@/lib/txReceipt";
 
 export function useVaultStats() {
   const { data, isLoading, error } = useReadContracts({
@@ -47,10 +48,11 @@ export function useVaultDeposits(address?: `0x${string}`) {
 
 export function useVaultDeposit() {
   const { address } = useAccount();
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -67,14 +69,15 @@ export function useVaultDeposit() {
     [address, writeContractAsync]
   );
 
-  return { deposit, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { deposit, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
 }
 
 export function useVaultWithdraw() {
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -90,16 +93,17 @@ export function useVaultWithdraw() {
     [writeContractAsync]
   );
 
-  return { withdraw, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { withdraw, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
 }
 
 export function useVaultBorrow() {
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -146,7 +150,10 @@ export function useVaultBorrow() {
           args: [yieldVaultContract.address, maxUint256],
           ...heavyTxGas(),
         });
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        await publicClient.waitForTransactionReceipt({
+          hash: approveHash,
+          pollingInterval: HUB_TX_RECEIPT_POLL_MS,
+        });
       }
 
       return writeContractAsync({
@@ -159,14 +166,15 @@ export function useVaultBorrow() {
     [address, publicClient, writeContractAsync]
   );
 
-  return { borrow, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { borrow, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
 }
 
 export function useClaimYield() {
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -183,14 +191,15 @@ export function useClaimYield() {
     [writeContractAsync]
   );
 
-  return { claimYield, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { claimYield, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
 }
 
 export function useReturnLoan() {
-  const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
+  const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
     hash,
+    ...hubWaitForTransactionReceiptProps,
     query: { enabled: !!hash },
   });
 
@@ -206,5 +215,5 @@ export function useReturnLoan() {
     [writeContractAsync]
   );
 
-  return { returnLoan, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { returnLoan, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
 }
