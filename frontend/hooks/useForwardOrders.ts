@@ -3,6 +3,7 @@ import { forwardMarketContract } from "@/lib/contracts";
 import { heavyTxGas } from "@/lib/txGas";
 import { useCallback } from "react";
 import type { ForwardOrder } from "@/types/protocol";
+import { uint32Arg } from "@/lib/utils";
 
 export function useForwardOrders(address?: `0x${string}`) {
   const { data: sellerOrderIds } = useReadContract({
@@ -74,7 +75,7 @@ export function useCreateAsk() {
       return writeContractAsync({
         ...forwardMarketContract,
         functionName: "createAsk",
-        args: [regionId, strikePriceDOT, deliveryBlock],
+        args: [regionId, strikePriceDOT, uint32Arg(deliveryBlock)],
         ...heavyTxGas(),
       });
     },

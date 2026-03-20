@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { formatUnits, parseUnits } from "viem";
-import { DOT_DECIMALS, RELAY_BLOCK_TIME_SECONDS } from "@/constants";
+import { DOT_DECIMALS, RELAY_BLOCK_TIME_SECONDS, RELAY_BLOCK_UINT32_MAX } from "@/constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -112,6 +112,17 @@ export function truncateAddress(addr: string): string {
 
 export function isZeroAddress(addr: string): boolean {
   return !addr || addr === "0x" || addr === "0x0000000000000000000000000000000000000000";
+}
+
+// ─── ABI / viem arg helpers ──────────────────────────────────────────────────
+//
+// Wagmi infers Solidity `uint32` parameters as `number` for `writeContract` args (not `bigint`).
+
+export function uint32Arg(n: bigint): number {
+  if (n < 0n || n > RELAY_BLOCK_UINT32_MAX) {
+    throw new Error("Value out of uint32 range");
+  }
+  return Number(n);
 }
 
 // ─── Status Labels ──────────────────────────────────────────────────────────

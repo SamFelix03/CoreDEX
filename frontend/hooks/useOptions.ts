@@ -3,6 +3,7 @@ import { optionsEngineContract } from "@/lib/contracts";
 import { heavyTxGas, lightTxGas } from "@/lib/txGas";
 import { useCallback } from "react";
 import type { Option } from "@/types/protocol";
+import { uint32Arg } from "@/lib/utils";
 
 export function useOptionsData(address?: `0x${string}`) {
   const { data: writerOptionIds } = useReadContract({
@@ -75,7 +76,7 @@ export function useWriteCall() {
       return writeContractAsync({
         ...optionsEngineContract,
         functionName: "writeCall",
-        args: [regionId, strikePriceDOT, expiryBlock],
+        args: [regionId, strikePriceDOT, uint32Arg(expiryBlock)],
         ...heavyTxGas(),
       });
     },
@@ -100,7 +101,7 @@ export function useWritePut() {
       return writeContractAsync({
         ...optionsEngineContract,
         functionName: "writePut",
-        args: [regionId, strikePriceDOT, expiryBlock],
+        args: [regionId, strikePriceDOT, uint32Arg(expiryBlock)],
         ...heavyTxGas(),
       });
     },

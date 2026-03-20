@@ -3,6 +3,7 @@ import { yieldVaultContract } from "@/lib/contracts";
 import { heavyTxGas } from "@/lib/txGas";
 import { useCallback } from "react";
 import type { VaultStats } from "@/types/protocol";
+import { uint32Arg } from "@/lib/utils";
 
 export function useVaultStats() {
   const { data, isLoading, error } = useReadContracts({
@@ -104,7 +105,7 @@ export function useVaultBorrow() {
       return writeContractAsync({
         ...yieldVaultContract,
         functionName: "borrow",
-        args: [coreCount, durationBlocks],
+        args: [uint32Arg(coreCount), uint32Arg(durationBlocks)],
         ...heavyTxGas(),
       });
     },
