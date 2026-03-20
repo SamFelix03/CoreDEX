@@ -9,9 +9,8 @@ import { RegionSelectorField } from "@/components/coretime/RegionSelectorField";
 import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
 import { useWriteCall, useWritePut } from "@/hooks/useOptions";
 import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
-import { useOracleSpot } from "@/hooks/useOracleSpot";
-import { ASSET_HUB_CHAIN_ID, PRICE_BAND_PCT } from "@/constants";
-import { dotWeiToInputString, formatDOT, parseDOT, cn } from "@/lib/utils";
+import { ASSET_HUB_CHAIN_ID, UI_STRIKE_MAX_WEI, UI_STRIKE_MIN_WEI } from "@/constants";
+import { formatDOT, parseDOT, cn } from "@/lib/utils";
 
 export function WriteOptionForm() {
   const [optionType, setOptionType] = useState<"call" | "put">("call");
@@ -44,12 +43,15 @@ export function WriteOptionForm() {
   const error = optionType === "call" ? callError : putError;
 
   const chainId = useChainId();
-  const { spot, strikeMin, strikeMax, suggestedStrike, isLoading: spotLoading } = useOracleSpot();
   const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
+
+  const strikeWei = parseDOT(strikePrice.trim());
+  const strikeInRange =
+    strikeWei > 0n && strikeWei >= UI_STRIKE_MIN_WEI && strikeWei <= UI_STRIKE_MAX_WEI;
 
   const canSubmit =
     !!regionId &&
-    !!strikePrice &&
+    strikeInRange &&
     expiryBlock !== null &&
     !blockEstError &&
     !isLoadingHead;
@@ -112,44 +114,30 @@ export function WriteOptionForm() {
           disabled={wrongChain}
           helperText="For calls, pick a region you own that is not locked elsewhere."
         />
-        {!spotLoading && spot !== undefined && strikeMin !== undefined && strikeMax !== undefined && (
-          <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
-            <div>
-              Oracle spot: <span className="text-foreground font-mono">{formatDOT(spot)} DOT</span>
-            </div>
-            <div>
-              Allowed strike (±{String(PRICE_BAND_PCT)}%):{" "}
-              <span className="text-foreground font-mono">
-                {formatDOT(strikeMin)} – {formatDOT(strikeMax)} DOT
-              </span>
-            </div>
-            {suggestedStrike !== undefined && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2 h-8 text-[10px]"
-                onClick={() => {
-                  reset();
-                  setStrikePrice(dotWeiToInputString(suggestedStrike));
-                }}
-              >
-                Use test-script strike (+20% spot)
-              </Button>
-            )}
-          </div>
-        )}
         <Input
           label="Strike Price"
           suffix="DOT"
           type="number"
-          placeholder="e.g. 6"
+          min={2.5}
+          max={7.5}
+          step={0.01}
+          placeholder="2.5 – 7.5"
           value={strikePrice}
           onChange={(e) => {
             reset();
             setStrikePrice(e.target.value);
           }}
         />
+        <p className="text-[10px] text-muted-foreground -mt-2">
+          Enter between <span className="font-mono text-foreground">{formatDOT(UI_STRIKE_MIN_WEI)}</span> and{" "}
+          <span className="font-mono text-foreground">{formatDOT(UI_STRIKE_MAX_WEI)}</span> DOT (contract still
+          validates against the oracle spot ±50%).
+        </p>
+        {strikePrice.trim() !== "" && !strikeInRange && (
+          <p className="text-[10px] text-destructive">
+            Strike must be between {formatDOT(UI_STRIKE_MIN_WEI)} and {formatDOT(UI_STRIKE_MAX_WEI)} DOT.
+          </p>
+        )}
         <FutureRelayTimeInput
           label="Expiry time"
           description="When this option expires (European exercise). Converted to a relay block on submit."

@@ -15,7 +15,8 @@ export type OwnedCoretimeRegion = {
   end: number;
 };
 
-const OWNER_BATCH = 96;
+/** Parallel reads per batch (no Multicall3 — Polkadot Hub TestNet). */
+const OWNER_READ_CONCURRENCY = 24;
 
 function toNum(v: unknown): number {
   if (typeof v === "bigint") return Number(v);
@@ -41,63 +42,61 @@ export function useOwnedCoretimeRegions() {
       const addrLc = address.toLowerCase();
       const ownedIds: bigint[] = [];
 
-      for (let start = 1; start <= maxScan; start += OWNER_BATCH) {
-        const end = Math.min(start + OWNER_BATCH - 1, maxScan);
-        const contracts = [];
-        for (let id = start; id <= end; id++) {
-          contracts.push({
-            address: coretimeNftContract.address,
-            abi: CORETIME_NFT_ABI,
-            functionName: "ownerOf" as const,
-            args: [BigInt(id)] as const,
-          });
-        }
-
-        const results = await publicClient.multicall({
-          contracts,
-          allowFailure: true,
-        });
-
-        let offset = 0;
-        for (let id = start; id <= end; id++, offset++) {
-          const r = results[offset];
-          if (r.status !== "success" || r.result === undefined) continue;
-          const owner = r.result as string;
-          if (owner.toLowerCase() === addrLc) {
-            ownedIds.push(BigInt(id));
+      for (let start = 1; start <= maxScan; start += OWNER_READ_CONCURRENCY) {
+        const end = Math.min(start + OWNER_READ_CONCURRENCY - 1, maxScan);
+        const batch = await Promise.all(
+          Array.from({ length: end - start + 1 }, (_, k) => {
+            const id = BigInt(start + k);
+            return publicClient
+              .readContract({
+                address: coretimeNftContract.address,
+                abi: CORETIME_NFT_ABI,
+                functionName: "ownerOf",
+                args: [id],
+              })
+              .then((owner) => ({ id, owner: owner as string }))
+              .catch(() => null);
+          })
+        );
+        for (const r of batch) {
+          if (r && r.owner.toLowerCase() === addrLc) {
+            ownedIds.push(r.id);
           }
         }
       }
 
       if (ownedIds.length === 0) return [];
 
-      const metaContracts = ownedIds.flatMap((id) => [
-        {
-          address: coretimeNftContract.address,
-          abi: CORETIME_NFT_ABI,
-          functionName: "regionBegin" as const,
-          args: [id] as const,
-        },
-        {
-          address: coretimeNftContract.address,
-          abi: CORETIME_NFT_ABI,
-          functionName: "regionEnd" as const,
-          args: [id] as const,
-        },
-      ]);
-
-      const metaResults = await publicClient.multicall({
-        contracts: metaContracts,
-        allowFailure: true,
-      });
+      const metaPairs = await Promise.all(
+        ownedIds.flatMap((id) => [
+          publicClient
+            .readContract({
+              address: coretimeNftContract.address,
+              abi: CORETIME_NFT_ABI,
+              functionName: "regionBegin",
+              args: [id],
+            })
+            .then((v) => toNum(v))
+            .catch(() => 0),
+          publicClient
+            .readContract({
+              address: coretimeNftContract.address,
+              abi: CORETIME_NFT_ABI,
+              functionName: "regionEnd",
+              args: [id],
+            })
+            .then((v) => toNum(v))
+            .catch(() => 0),
+        ])
+      );
 
       const out: OwnedCoretimeRegion[] = [];
       for (let i = 0; i < ownedIds.length; i++) {
-        const b = metaResults[i * 2];
-        const e = metaResults[i * 2 + 1];
-        const begin = b.status === "success" && b.result !== undefined ? toNum(b.result) : 0;
-        const end = e.status === "success" && e.result !== undefined ? toNum(e.result) : 0;
-        out.push({ id: ownedIds[i], begin, end });
+        out.push({
+          id: ownedIds[i],
+          begin: metaPairs[i * 2] ?? 0,
+          end: metaPairs[i * 2 + 1] ?? 0,
+        });
       }
 
       out.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));

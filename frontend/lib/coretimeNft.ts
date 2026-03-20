@@ -23,6 +23,18 @@ export const CORETIME_NFT_ABI = [
     inputs: [{ name: "tokenId", type: "uint256" }],
     outputs: [{ type: "uint32" }],
   },
+  {
+    name: "mintRegion",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "regionBegin", type: "uint32" },
+      { name: "regionEnd", type: "uint32" },
+      { name: "cores", type: "uint16" },
+    ],
+    outputs: [{ name: "tokenId", type: "uint128" }],
+  },
 ] as const;
 
 export const coretimeNftContract = {

@@ -1,63 +1,65 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronUp, Copy } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAccount, useChainId } from "wagmi";
+import { Button } from "@/components/ui/Button";
+import { ASSET_HUB_CHAIN_ID } from "@/constants";
+import { useMintCoretimeRegion } from "@/hooks/useMintCoretimeRegion";
 import { getCoretimeNftScanMaxId } from "@/lib/coretimeNft";
 
-const MINT_CMD = "cd smart-contracts && npm run demo:mint-region";
-const MINT_CMD_ALT =
-  "./node_modules/.bin/hardhat run scripts/mint-demo-region.ts --network polkadotTestNet";
-
 export function CoretimeMintBanner() {
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const { isConnected } = useAccount();
+  const chainId = useChainId();
+  const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
+  const queryClient = useQueryClient();
+  const { mint, isPending, isSuccess, error, reset } = useMintCoretimeRegion();
 
-  const copy = async () => {
-    await navigator.clipboard.writeText(MINT_CMD);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleMint = async () => {
+    reset();
+    try {
+      await mint();
+      await queryClient.invalidateQueries({ queryKey: ["coretimeNft"] });
+    } catch (e) {
+      console.error("mintRegion failed:", e);
+    }
   };
 
   return (
-    <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 text-left font-semibold text-foreground"
-      >
-        <span>Mint your Coretime NFT</span>
-        {open ? <ChevronUp className="size-4 shrink-0" /> : <ChevronDown className="size-4 shrink-0" />}
-      </button>
-      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-        Forwards, options, and vault actions need a <strong>Coretime region NFT</strong> owned by your
-        wallet. The Hub testnet uses a PVM mock; mint from the repo with the <strong>same private key</strong>{" "}
-        as MetaMask.
-      </p>
-      <div className={cn("mt-3 space-y-2 overflow-hidden transition-all", open ? "max-h-[320px]" : "max-h-0")}>
-        <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1.5">
-          <li>Set <code className="text-white/80">PRIVATE_KEY</code> in <code className="text-white/80">smart-contracts/.env</code> to your demo wallet.</li>
-          <li>Run the mint script (install deps in <code className="text-white/80">smart-contracts</code> first).</li>
-          <li>Refresh this page — your new region appears in the picker (ids are scanned up to{" "}
-            <span className="font-mono text-white/70">{getCoretimeNftScanMaxId()}</span>; set{" "}
-            <code className="text-white/80">NEXT_PUBLIC_CORETIME_NFT_SCAN_MAX_ID</code> if you mint higher ids).
-          </li>
-        </ol>
-        <div className="relative rounded-lg border border-border bg-black/40 p-3 font-mono text-[10px] text-white/80 space-y-2">
-          <div>{MINT_CMD}</div>
-          <div className="text-white/50">or</div>
-          <div className="break-all">{MINT_CMD_ALT}</div>
-          <button
-            type="button"
-            onClick={copy}
-            className="absolute top-2 right-2 rounded p-1 text-white/60 hover:text-white hover:bg-white/10"
-            aria-label="Copy command"
-          >
-            <Copy className="size-3.5" />
-          </button>
-        </div>
-        {copied && <p className="text-[10px] text-green-400">Copied to clipboard.</p>}
+    <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-4 text-sm space-y-3">
+      <div>
+        <h2 className="font-semibold text-foreground">Mint your Coretime NFT</h2>
+        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+          One click — mints a demo region to your wallet (Hub TestNet mock). Then pick it in the region
+          selector. Scan covers ids 1–{getCoretimeNftScanMaxId()}.
+        </p>
       </div>
+      {wrongChain && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Switch to <span className="font-mono">Polkadot Hub TestNet</span> (chain {ASSET_HUB_CHAIN_ID}) to mint.
+        </div>
+      )}
+      {!isConnected && (
+        <p className="text-xs text-amber-200/90">Connect your wallet to mint.</p>
+      )}
+      {error && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {(error as Error).message?.slice(0, 200)}
+        </div>
+      )}
+      {isSuccess && (
+        <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-400">
+          Mint confirmed — open the region picker to choose your new NFT.
+        </div>
+      )}
+      <Button
+        type="button"
+        onClick={handleMint}
+        loading={isPending}
+        disabled={!isConnected || wrongChain}
+        className="w-full sm:w-auto"
+      >
+        Mint Coretime NFT
+      </Button>
     </div>
   );
 }

@@ -32,6 +32,10 @@ export const DOT_DECIMALS  = 18;
 export const PRECISION     = parseUnits("1", 18);
 
 // ─── Protocol ───────────────────────────────────────────────────────────────
+/** UI-only strike bounds (DOT planck). On-chain still uses oracle ± band — keep spot in ~5 DOT range for testnet. */
+export const UI_STRIKE_MIN_WEI = parseUnits("2.5", DOT_DECIMALS);
+export const UI_STRIKE_MAX_WEI = parseUnits("7.5", DOT_DECIMALS);
+
 export const GRACE_PERIOD       = 14_400n;       // blocks
 export const PRICE_BAND_PCT     = 50n;           // percent
 export const RECOVERY_TIMEOUT   = 14_400n;       // blocks

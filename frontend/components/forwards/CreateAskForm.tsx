@@ -9,9 +9,8 @@ import { RegionSelectorField } from "@/components/coretime/RegionSelectorField";
 import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
 import { useCreateAsk } from "@/hooks/useForwardOrders";
 import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
-import { useOracleSpot } from "@/hooks/useOracleSpot";
-import { ASSET_HUB_CHAIN_ID, PRICE_BAND_PCT } from "@/constants";
-import { dotWeiToInputString, formatDOT, parseDOT } from "@/lib/utils";
+import { ASSET_HUB_CHAIN_ID, UI_STRIKE_MAX_WEI, UI_STRIKE_MIN_WEI } from "@/constants";
+import { formatDOT, parseDOT } from "@/lib/utils";
 
 export function CreateAskForm() {
   const [regionId, setRegionId] = useState("");
@@ -35,12 +34,15 @@ export function CreateAskForm() {
 
   const { createAsk, isPending, isSuccess, error, reset } = useCreateAsk();
   const chainId = useChainId();
-  const { spot, strikeMin, strikeMax, suggestedStrike, isLoading: spotLoading } = useOracleSpot();
   const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
+
+  const strikeWei = parseDOT(strikePrice.trim());
+  const strikeInRange =
+    strikeWei > 0n && strikeWei >= UI_STRIKE_MIN_WEI && strikeWei <= UI_STRIKE_MAX_WEI;
 
   const canSubmit =
     !!regionId &&
-    !!strikePrice &&
+    strikeInRange &&
     deliveryBlock !== null &&
     !blockEstError &&
     !isLoadingHead;
@@ -71,51 +73,33 @@ export function CreateAskForm() {
         {wrongChain && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
             Switch your wallet to <span className="font-mono">Polkadot Hub TestNet</span> (chain{" "}
-            {ASSET_HUB_CHAIN_ID}). The test script uses the same network.
-          </div>
-        )}
-        {!spotLoading && spot !== undefined && strikeMin !== undefined && strikeMax !== undefined && (
-          <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
-            <div>
-              Oracle spot: <span className="text-foreground font-mono">{formatDOT(spot)} DOT</span>
-            </div>
-            <div>
-              Allowed strike (±{String(PRICE_BAND_PCT)}%):{" "}
-              <span className="text-foreground font-mono">
-                {formatDOT(strikeMin)} – {formatDOT(strikeMax)} DOT
-              </span>
-            </div>
-            <p className="text-[10px] text-white/50 pt-1">
-              The old placeholder &quot;10.5&quot; is <strong>outside</strong> this band — the contract reverts
-              (same as the test using <strong>6</strong> DOT at ~5 spot).
-            </p>
-            {suggestedStrike !== undefined && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-2 h-8 text-[10px]"
-                onClick={() => {
-                  reset();
-                  setStrikePrice(dotWeiToInputString(suggestedStrike));
-                }}
-              >
-                Use test-script strike (+20% spot → {formatDOT(suggestedStrike)} DOT)
-              </Button>
-            )}
+            {ASSET_HUB_CHAIN_ID}).
           </div>
         )}
         <Input
           label="Strike Price"
           suffix="DOT"
           type="number"
-          placeholder="e.g. 6"
+          min={2.5}
+          max={7.5}
+          step={0.01}
+          placeholder="2.5 – 7.5"
           value={strikePrice}
           onChange={(e) => {
             reset();
             setStrikePrice(e.target.value);
           }}
         />
+        <p className="text-[10px] text-muted-foreground -mt-2">
+          Enter between <span className="font-mono text-foreground">{formatDOT(UI_STRIKE_MIN_WEI)}</span> and{" "}
+          <span className="font-mono text-foreground">{formatDOT(UI_STRIKE_MAX_WEI)}</span> DOT (contract still
+          validates against the oracle spot ±50%).
+        </p>
+        {strikePrice.trim() !== "" && !strikeInRange && (
+          <p className="text-[10px] text-destructive">
+            Strike must be between {formatDOT(UI_STRIKE_MIN_WEI)} and {formatDOT(UI_STRIKE_MAX_WEI)} DOT.
+          </p>
+        )}
         <FutureRelayTimeInput
           label="Delivery time"
           description="When this forward should settle (your local time). The app converts this to a relay block for the contract."
