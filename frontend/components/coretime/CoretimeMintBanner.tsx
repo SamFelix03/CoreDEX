@@ -54,8 +54,8 @@ export function CoretimeMintBanner() {
       {isSuccess && mintedTokenId === undefined && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 space-y-1">
           <p>
-            Mint confirmed, but the token ID could not be read from transaction logs (non-standard NFT events on
-            this chain). Check the transaction in your wallet or block explorer.
+            Mint confirmed, but the region ID wasn&apos;t resolved (simulation may have failed earlier, or logs
+            don&apos;t match ERC-721). Check the transaction in your wallet or explorer.
           </p>
           {hash && <p className="font-mono text-[10px] break-all opacity-90">{hash}</p>}
         </div>
