@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { formatUnits, parseUnits } from "viem";
-import { DOT_DECIMALS } from "@/constants";
+import { DOT_DECIMALS, RELAY_BLOCK_TIME_SECONDS } from "@/constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -84,7 +84,7 @@ export function formatRate(value: bigint, precision = 18, digits = 4): string {
 // ─── Block Numbers ──────────────────────────────────────────────────────────
 
 export function blocksToTime(blocks: bigint): string {
-  const seconds = Number(blocks) * 12; // 12s block time
+  const seconds = Number(blocks) * RELAY_BLOCK_TIME_SECONDS;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
   const days = Math.floor(seconds / 86400);

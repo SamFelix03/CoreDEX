@@ -20,7 +20,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwind-merge": "^3.5.0",
-    "viem": "^2.47.1",
+    "viem": "^2.47.5",
     "wagmi": "^2.19.5"
   },
   "devDependencies": {

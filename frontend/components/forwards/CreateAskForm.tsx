@@ -1,25 +1,47 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { addHours, format } from "date-fns";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
 import { useCreateAsk } from "@/hooks/useForwardOrders";
+import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
 import { parseDOT } from "@/lib/utils";
 
 export function CreateAskForm() {
   const [regionId, setRegionId] = useState("");
   const [strikePrice, setStrikePrice] = useState("");
-  const [deliveryBlock, setDeliveryBlock] = useState("");
+  const [deliveryWhen, setDeliveryWhen] = useState(() =>
+    format(addHours(new Date(), 24), "yyyy-MM-dd'T'HH:mm")
+  );
+
+  const targetMs = useMemo(() => {
+    if (!deliveryWhen?.trim()) return null;
+    const t = new Date(deliveryWhen).getTime();
+    return Number.isFinite(t) ? t : null;
+  }, [deliveryWhen]);
+
+  const {
+    estimatedBlock: deliveryBlock,
+    error: blockEstError,
+    isLoadingHead,
+    latestBlockNumber,
+  } = useEstimatedRelayBlock(targetMs);
+
   const { createAsk, isPending, isSuccess, error, reset } = useCreateAsk();
 
+  const canSubmit =
+    !!regionId &&
+    !!strikePrice &&
+    deliveryBlock !== null &&
+    !blockEstError &&
+    !isLoadingHead;
+
   const handleSubmit = async () => {
-    if (!regionId || !strikePrice || !deliveryBlock) return;
+    if (!canSubmit || deliveryBlock === null) return;
     try {
-      await createAsk(
-        BigInt(regionId),
-        parseDOT(strikePrice),
-        BigInt(deliveryBlock)
-      );
+      await createAsk(BigInt(regionId), parseDOT(strikePrice), deliveryBlock);
     } catch (e) {
       console.error("createAsk failed:", e);
     }
@@ -34,7 +56,10 @@ export function CreateAskForm() {
           type="number"
           placeholder="e.g. 42"
           value={regionId}
-          onChange={(e) => { reset(); setRegionId(e.target.value); }}
+          onChange={(e) => {
+            reset();
+            setRegionId(e.target.value);
+          }}
         />
         <Input
           label="Strike Price"
@@ -42,14 +67,23 @@ export function CreateAskForm() {
           type="number"
           placeholder="e.g. 10.5"
           value={strikePrice}
-          onChange={(e) => { reset(); setStrikePrice(e.target.value); }}
+          onChange={(e) => {
+            reset();
+            setStrikePrice(e.target.value);
+          }}
         />
-        <Input
-          label="Delivery Block"
-          type="number"
-          placeholder="e.g. 1000000"
-          value={deliveryBlock}
-          onChange={(e) => { reset(); setDeliveryBlock(e.target.value); }}
+        <FutureRelayTimeInput
+          label="Delivery time"
+          description="When this forward should settle (your local time). The app converts this to a relay block for the contract."
+          value={deliveryWhen}
+          onChange={(v) => {
+            reset();
+            setDeliveryWhen(v);
+          }}
+          estimatedBlock={deliveryBlock}
+          estimateError={blockEstError}
+          isLoadingHead={isLoadingHead}
+          latestBlockNumber={latestBlockNumber}
         />
         {error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
@@ -64,7 +98,7 @@ export function CreateAskForm() {
         <Button
           onClick={handleSubmit}
           loading={isPending}
-          disabled={!regionId || !strikePrice || !deliveryBlock}
+          disabled={!canSubmit}
           className="w-full"
         >
           Create Ask

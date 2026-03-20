@@ -37,3 +37,7 @@ export const PRICE_BAND_PCT     = 50n;           // percent
 export const RECOVERY_TIMEOUT   = 14_400n;       // blocks
 export const EPOCH_BLOCKS       = 50_400n;       // ~7 days at 12s blocks
 export const BPS_DENOMINATOR    = 10_000n;
+
+/** Hub / relay-style assumption for mapping wall-clock → block height in the UI (Solidity uses uint32 for many block fields). */
+export const RELAY_BLOCK_TIME_SECONDS = 12;
+export const RELAY_BLOCK_UINT32_MAX     = 4_294_967_295n;

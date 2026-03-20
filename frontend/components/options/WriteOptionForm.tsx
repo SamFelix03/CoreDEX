@@ -1,32 +1,58 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { addHours, format } from "date-fns";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
 import { useWriteCall, useWritePut } from "@/hooks/useOptions";
-import { parseDOT } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
+import { parseDOT, cn } from "@/lib/utils";
 
 export function WriteOptionForm() {
   const [optionType, setOptionType] = useState<"call" | "put">("call");
   const [regionId, setRegionId] = useState("");
   const [strikePrice, setStrikePrice] = useState("");
-  const [expiryBlock, setExpiryBlock] = useState("");
+  const [expiryWhen, setExpiryWhen] = useState(() =>
+    format(addHours(new Date(), 24), "yyyy-MM-dd'T'HH:mm")
+  );
 
-  const { writeCall, isPending: callPending, isSuccess: callSuccess, error: callError, reset: resetCall } = useWriteCall();
-  const { writePut, isPending: putPending, isSuccess: putSuccess, error: putError, reset: resetPut } = useWritePut();
+  const targetMs = useMemo(() => {
+    if (!expiryWhen?.trim()) return null;
+    const t = new Date(expiryWhen).getTime();
+    return Number.isFinite(t) ? t : null;
+  }, [expiryWhen]);
+
+  const {
+    estimatedBlock: expiryBlock,
+    error: blockEstError,
+    isLoadingHead,
+    latestBlockNumber,
+  } = useEstimatedRelayBlock(targetMs);
+
+  const { writeCall, isPending: callPending, isSuccess: callSuccess, error: callError, reset: resetCall } =
+    useWriteCall();
+  const { writePut, isPending: putPending, isSuccess: putSuccess, error: putError, reset: resetPut } =
+    useWritePut();
 
   const isPending = optionType === "call" ? callPending : putPending;
   const isSuccess = optionType === "call" ? callSuccess : putSuccess;
   const error = optionType === "call" ? callError : putError;
 
+  const canSubmit =
+    !!regionId &&
+    !!strikePrice &&
+    expiryBlock !== null &&
+    !blockEstError &&
+    !isLoadingHead;
+
   const handleSubmit = async () => {
-    if (!regionId || !strikePrice || !expiryBlock) return;
+    if (!canSubmit || expiryBlock === null) return;
     try {
       if (optionType === "call") {
-        await writeCall(BigInt(regionId), parseDOT(strikePrice), BigInt(expiryBlock));
+        await writeCall(BigInt(regionId), parseDOT(strikePrice), expiryBlock);
       } else {
-        await writePut(BigInt(regionId), parseDOT(strikePrice), BigInt(expiryBlock));
+        await writePut(BigInt(regionId), parseDOT(strikePrice), expiryBlock);
       }
     } catch (e) {
       console.error("writeOption failed:", e);
@@ -47,7 +73,10 @@ export function WriteOptionForm() {
             <button
               key={t}
               type="button"
-              onClick={() => { setOptionType(t); reset(); }}
+              onClick={() => {
+                setOptionType(t);
+                reset();
+              }}
               className={cn(
                 "flex-1 rounded-lg border py-2.5 text-xs font-medium uppercase tracking-wider transition-all",
                 optionType === t
@@ -59,9 +88,40 @@ export function WriteOptionForm() {
             </button>
           ))}
         </div>
-        <Input label="Region ID" type="number" placeholder="e.g. 42" value={regionId} onChange={(e) => { reset(); setRegionId(e.target.value); }} />
-        <Input label="Strike Price" suffix="DOT" type="number" placeholder="e.g. 10.5" value={strikePrice} onChange={(e) => { reset(); setStrikePrice(e.target.value); }} />
-        <Input label="Expiry Block" type="number" placeholder="e.g. 1000000" value={expiryBlock} onChange={(e) => { reset(); setExpiryBlock(e.target.value); }} />
+        <Input
+          label="Region ID"
+          type="number"
+          placeholder="e.g. 42"
+          value={regionId}
+          onChange={(e) => {
+            reset();
+            setRegionId(e.target.value);
+          }}
+        />
+        <Input
+          label="Strike Price"
+          suffix="DOT"
+          type="number"
+          placeholder="e.g. 10.5"
+          value={strikePrice}
+          onChange={(e) => {
+            reset();
+            setStrikePrice(e.target.value);
+          }}
+        />
+        <FutureRelayTimeInput
+          label="Expiry time"
+          description="When this option expires (European exercise). Converted to a relay block on submit."
+          value={expiryWhen}
+          onChange={(v) => {
+            reset();
+            setExpiryWhen(v);
+          }}
+          estimatedBlock={expiryBlock}
+          estimateError={blockEstError}
+          isLoadingHead={isLoadingHead}
+          latestBlockNumber={latestBlockNumber}
+        />
         {error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
             {(error as Error).message?.slice(0, 120)}
@@ -75,7 +135,7 @@ export function WriteOptionForm() {
         <Button
           onClick={handleSubmit}
           loading={isPending}
-          disabled={!regionId || !strikePrice || !expiryBlock}
+          disabled={!canSubmit}
           className="w-full"
         >
           Write {optionType}
