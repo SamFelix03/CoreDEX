@@ -184,11 +184,6 @@ export function BorrowForm() {
             {blocksToTime(previewDurationBlocks)}). Final value is recomputed at send time from a fresh head.
           </p>
         )}
-        <p className="text-[10px] text-muted-foreground leading-relaxed">
-          On-chain: <span className="font-mono">borrow(uint32 coreCount, uint32 durationBlocks)</span>. The vault pulls
-          the lending fee via DOT <span className="font-mono">transferFrom</span> — you may be asked to{" "}
-          <strong>approve</strong> the vault first, then <strong>borrow</strong>.
-        </p>
         {previewFee !== null && (
           <p className="text-xs text-muted-foreground">
             Estimated lending fee (from current rate):{" "}
@@ -213,7 +208,7 @@ export function BorrowForm() {
         )}
         {isSuccess && (
           <TxSuccessWithExplorer hash={hash}>
-            <span>Borrow confirmed — lending fee paid from your DOT balance (after approval if needed).</span>
+            <span>Borrow confirmed.</span>
           </TxSuccessWithExplorer>
         )}
         {borrowDisabled && borrowDisabledHint && (

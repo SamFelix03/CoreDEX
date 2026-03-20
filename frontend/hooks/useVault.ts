@@ -105,8 +105,12 @@ export function useVaultBorrow() {
 
   /**
    * Same call shape as scripts (`borrow(coreCount, durationBlocks)` with uint32 args).
-   * On-chain fee is pulled via `IAssetsPrecompile.transferFrom` — approve vault on DOT precompile first
-   * when allowance is below the computed fee (matches real Asset Hub; mocks may not enforce allowance).
+   * Fee uses `IAssetsPrecompile.transferFrom` from the user to the vault.
+   *
+   * **Production** Hub assets precompile: ERC-20 `allowance` / `approve` exist — we approve the vault when needed.
+   * **CoreDEX PVM MockAssets** (`rust-contracts/mock_assets.rs`): implements `transferFrom` but **not**
+   * `allowance` or `approve` (unknown selectors revert). Scripts rely on mock allowing contract `transferFrom`
+   * without prior approval — so if `allowance` read fails, we skip approve and call `borrow` directly.
    */
   const borrow = useCallback(
     async (coreCount: bigint, durationBlocks: bigint) => {
@@ -123,13 +127,19 @@ export function useVaultBorrow() {
 
       const fee = computeVaultBorrowFee(c32, d32, rate as bigint);
 
-      const allowance = await publicClient.readContract({
-        ...assetsPrecompileContract,
-        functionName: "allowance",
-        args: [address, yieldVaultContract.address],
-      });
+      let assetsSupportAllowance = true;
+      let allowance = 0n;
+      try {
+        allowance = (await publicClient.readContract({
+          ...assetsPrecompileContract,
+          functionName: "allowance",
+          args: [address, yieldVaultContract.address],
+        })) as bigint;
+      } catch {
+        assetsSupportAllowance = false;
+      }
 
-      if ((allowance as bigint) < fee) {
+      if (assetsSupportAllowance && allowance < fee) {
         const approveHash = await writeContractAsync({
           ...assetsPrecompileContract,
           functionName: "approve",
