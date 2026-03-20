@@ -5,6 +5,7 @@ import {
   OPTIONS_ENGINE_ADDRESS,
   YIELD_VAULT_ADDRESS,
   SETTLEMENT_ADDRESS,
+  CORETIME_ORACLE_ADDRESS,
 } from "@/constants";
 import {
   REGISTRY_ABI,
@@ -43,4 +44,18 @@ export const yieldVaultContract = {
 export const settlementContract = {
   address: SETTLEMENT_ADDRESS,
   abi:     SETTLEMENT_ABI,
+} as const;
+
+/** PVM CoretimeOracle — used for strike band (same rule as ForwardMarket / OptionsEngine on-chain). */
+export const coretimeOracleContract = {
+  address: CORETIME_ORACLE_ADDRESS,
+  abi: [
+    {
+      name: "spotPrice",
+      type: "function",
+      stateMutability: "view",
+      inputs: [],
+      outputs: [{ type: "uint128" }],
+    },
+  ] as const,
 } as const;

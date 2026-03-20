@@ -1,13 +1,17 @@
 "use client";
 import { useMemo, useState } from "react";
 import { addHours, format } from "date-fns";
+import { useChainId } from "wagmi";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { RegionSelectorField } from "@/components/coretime/RegionSelectorField";
 import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
 import { useCreateAsk } from "@/hooks/useForwardOrders";
 import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
-import { parseDOT } from "@/lib/utils";
+import { useOracleSpot } from "@/hooks/useOracleSpot";
+import { ASSET_HUB_CHAIN_ID, PRICE_BAND_PCT } from "@/constants";
+import { dotWeiToInputString, formatDOT, parseDOT } from "@/lib/utils";
 
 export function CreateAskForm() {
   const [regionId, setRegionId] = useState("");
@@ -30,6 +34,9 @@ export function CreateAskForm() {
   } = useEstimatedRelayBlock(targetMs);
 
   const { createAsk, isPending, isSuccess, error, reset } = useCreateAsk();
+  const chainId = useChainId();
+  const { spot, strikeMin, strikeMax, suggestedStrike, isLoading: spotLoading } = useOracleSpot();
+  const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
 
   const canSubmit =
     !!regionId &&
@@ -51,21 +58,58 @@ export function CreateAskForm() {
     <Card className="animate-slide-in-up">
       <CardHeader label="Create Forward Ask" />
       <CardContent className="flex flex-col gap-4">
-        <Input
-          label="Region ID"
-          type="number"
-          placeholder="e.g. 42"
+        <RegionSelectorField
+          label="Coretime region"
           value={regionId}
-          onChange={(e) => {
+          onChange={(v) => {
             reset();
-            setRegionId(e.target.value);
+            setRegionId(v);
           }}
+          disabled={wrongChain}
+          helperText="Choose an NFT you own. It must not already be locked (open forward, option, or vault)."
         />
+        {wrongChain && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            Switch your wallet to <span className="font-mono">Polkadot Hub TestNet</span> (chain{" "}
+            {ASSET_HUB_CHAIN_ID}). The test script uses the same network.
+          </div>
+        )}
+        {!spotLoading && spot !== undefined && strikeMin !== undefined && strikeMax !== undefined && (
+          <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
+            <div>
+              Oracle spot: <span className="text-foreground font-mono">{formatDOT(spot)} DOT</span>
+            </div>
+            <div>
+              Allowed strike (±{String(PRICE_BAND_PCT)}%):{" "}
+              <span className="text-foreground font-mono">
+                {formatDOT(strikeMin)} – {formatDOT(strikeMax)} DOT
+              </span>
+            </div>
+            <p className="text-[10px] text-white/50 pt-1">
+              The old placeholder &quot;10.5&quot; is <strong>outside</strong> this band — the contract reverts
+              (same as the test using <strong>6</strong> DOT at ~5 spot).
+            </p>
+            {suggestedStrike !== undefined && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 h-8 text-[10px]"
+                onClick={() => {
+                  reset();
+                  setStrikePrice(dotWeiToInputString(suggestedStrike));
+                }}
+              >
+                Use test-script strike (+20% spot → {formatDOT(suggestedStrike)} DOT)
+              </Button>
+            )}
+          </div>
+        )}
         <Input
           label="Strike Price"
           suffix="DOT"
           type="number"
-          placeholder="e.g. 10.5"
+          placeholder="e.g. 6"
           value={strikePrice}
           onChange={(e) => {
             reset();
@@ -98,7 +142,7 @@ export function CreateAskForm() {
         <Button
           onClick={handleSubmit}
           loading={isPending}
-          disabled={!canSubmit}
+          disabled={!canSubmit || wrongChain}
           className="w-full"
         >
           Create Ask

@@ -65,6 +65,13 @@ export function formatGweiCompact(value: bigint, fractionDigits = 2): string {
   return sign + firstChunk + "." + fracTrimmed + suffix;
 }
 
+/** Trim trailing zeros for HTML number inputs (strike, etc.). */
+export function dotWeiToInputString(wei: bigint): string {
+  const s = formatUnits(wei, DOT_DECIMALS);
+  if (!s.includes(".")) return s;
+  return s.replace(/\.?0+$/, "") || "0";
+}
+
 export function parseDOT(value: string): bigint {
   try { return parseUnits(value, DOT_DECIMALS); }
   catch { return 0n; }

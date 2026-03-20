@@ -1,12 +1,16 @@
 "use client";
 import { useState } from "react";
+import { useChainId } from "wagmi";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { RegionSelectorField } from "@/components/coretime/RegionSelectorField";
 import { useVaultDeposit } from "@/hooks/useVault";
+import { ASSET_HUB_CHAIN_ID } from "@/constants";
 
 export function DepositForm() {
   const [regionId, setRegionId] = useState("");
+  const chainId = useChainId();
+  const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
   const { deposit, isPending, isSuccess, error, reset } = useVaultDeposit();
 
   const handleDeposit = async () => {
@@ -22,17 +26,21 @@ export function DepositForm() {
     <Card className="animate-slide-in-up">
       <CardHeader label="Deposit Region" />
       <CardContent className="flex flex-col gap-4">
-        <Input
-          label="Region ID"
-          type="number"
-          placeholder="Coretime Region NFT ID"
+        {wrongChain && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            Switch to <span className="font-mono">Polkadot Hub TestNet</span> (chain {ASSET_HUB_CHAIN_ID}).
+          </div>
+        )}
+        <RegionSelectorField
+          label="Coretime region"
           value={regionId}
-          onChange={(e) => { reset(); setRegionId(e.target.value); }}
+          onChange={(v) => {
+            reset();
+            setRegionId(v);
+          }}
+          disabled={wrongChain}
+          helperText="Deposit your Coretime NFT into the vault. You receive a receipt for yield and later withdrawal."
         />
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Deposit your Coretime NFT into the vault to earn yield from lending fees.
-          You will receive a receipt token that can be used to withdraw later.
-        </p>
         {error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
             {(error as Error).message?.slice(0, 120)}
@@ -43,7 +51,12 @@ export function DepositForm() {
             Region deposited successfully!
           </div>
         )}
-        <Button onClick={handleDeposit} loading={isPending} disabled={!regionId} className="w-full">
+        <Button
+          onClick={handleDeposit}
+          loading={isPending}
+          disabled={!regionId || wrongChain}
+          className="w-full"
+        >
           Deposit
         </Button>
       </CardContent>
