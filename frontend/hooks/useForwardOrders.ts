@@ -14,11 +14,19 @@ const WM = (key: string) =>
     mutation: { mutationKey: ["writeContract", "ForwardMarket", key] as const },
   }) as const;
 
-async function simulateForwardWrite(
+/** Args tuples must match `FORWARD_MARKET_ABI` so `simulateContract` infers correctly. */
+type ForwardMarketWriteArgs = {
+  createAsk: readonly [bigint, bigint, number];
+  matchOrder: readonly [bigint];
+  settle: readonly [bigint];
+  cancel: readonly [bigint];
+};
+
+async function simulateForwardWrite<N extends keyof ForwardMarketWriteArgs>(
   publicClient: ReturnType<typeof usePublicClient>,
   address: `0x${string}`,
-  functionName: "createAsk" | "matchOrder" | "settle" | "cancel",
-  args: readonly unknown[]
+  functionName: N,
+  args: ForwardMarketWriteArgs[N]
 ) {
   if (!publicClient) {
     throw new Error("No RPC client for Polkadot Hub — cannot simulate transaction");
