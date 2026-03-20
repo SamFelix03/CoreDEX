@@ -1,5 +1,6 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { optionsEngineContract } from "@/lib/contracts";
+import { heavyTxGas, lightTxGas } from "@/lib/txGas";
 import { useCallback } from "react";
 import type { Option } from "@/types/protocol";
 
@@ -75,6 +76,7 @@ export function useWriteCall() {
         ...optionsEngineContract,
         functionName: "writeCall",
         args: [regionId, strikePriceDOT, expiryBlock],
+        ...heavyTxGas(),
       });
     },
     [address, writeContractAsync]
@@ -99,6 +101,7 @@ export function useWritePut() {
         ...optionsEngineContract,
         functionName: "writePut",
         args: [regionId, strikePriceDOT, expiryBlock],
+        ...heavyTxGas(),
       });
     },
     [address, writeContractAsync]
@@ -123,6 +126,7 @@ export function useBuyOption() {
         ...optionsEngineContract,
         functionName: "buyOption",
         args: [optionId],
+        ...lightTxGas(),
       });
     },
     [address, writeContractAsync]
@@ -145,6 +149,7 @@ export function useExerciseOption() {
         ...optionsEngineContract,
         functionName: "exercise",
         args: [optionId],
+        ...heavyTxGas(),
       });
     },
     [writeContractAsync]

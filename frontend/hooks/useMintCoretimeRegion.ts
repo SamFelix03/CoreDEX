@@ -1,21 +1,31 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { CORETIME_NFT_ABI, coretimeNftContract } from "@/lib/coretimeNft";
-
-/** PVM mint can need a high gas limit (matches Hardhat demo script default). */
-const MINT_GAS = 12_000_000n;
+import { parseMintedErc721TokenIdFromReceipt } from "@/lib/parseMintedNftFromReceipt";
+import { heavyTxGas } from "@/lib/txGas";
 
 export function useMintCoretimeRegion() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
+  const {
+    data: receipt,
+    isLoading: isConfirming,
+    isSuccess,
+    error: receiptError,
+  } = useWaitForTransactionReceipt({
     hash,
+    chainId: ASSET_HUB_CHAIN_ID,
     query: { enabled: !!hash },
   });
+
+  const mintedTokenId = useMemo(() => {
+    if (!isSuccess || !receipt || !address) return undefined;
+    return parseMintedErc721TokenIdFromReceipt(receipt, coretimeNftContract.address, address);
+  }, [isSuccess, receipt, address]);
 
   const mint = useCallback(async () => {
     if (!address) throw new Error("Connect your wallet first");
@@ -28,14 +38,15 @@ export function useMintCoretimeRegion() {
       abi: CORETIME_NFT_ABI,
       functionName: "mintRegion",
       args: [address, regionBegin, regionEnd, cores],
-      gas: MINT_GAS,
       chainId: ASSET_HUB_CHAIN_ID,
+      ...heavyTxGas(),
     });
   }, [address, writeContractAsync]);
 
   return {
     mint,
     hash,
+    mintedTokenId,
     isPending: isPending || isConfirming,
     isSuccess,
     error: writeError ?? receiptError,

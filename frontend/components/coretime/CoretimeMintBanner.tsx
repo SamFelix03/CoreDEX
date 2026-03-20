@@ -1,24 +1,20 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import { useAccount, useChainId } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { useMintCoretimeRegion } from "@/hooks/useMintCoretimeRegion";
-import { getCoretimeNftScanMaxId } from "@/lib/coretimeNft";
 
 export function CoretimeMintBanner() {
   const { isConnected } = useAccount();
   const chainId = useChainId();
   const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
-  const queryClient = useQueryClient();
-  const { mint, isPending, isSuccess, error, reset } = useMintCoretimeRegion();
+  const { mint, isPending, isSuccess, error, reset, mintedTokenId, hash } = useMintCoretimeRegion();
 
   const handleMint = async () => {
     reset();
     try {
       await mint();
-      await queryClient.invalidateQueries({ queryKey: ["coretimeNft"] });
     } catch (e) {
       console.error("mintRegion failed:", e);
     }
@@ -29,8 +25,8 @@ export function CoretimeMintBanner() {
       <div>
         <h2 className="font-semibold text-foreground">Mint your Coretime NFT</h2>
         <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-          One click — mints a demo region to your wallet (Hub TestNet mock). Then pick it in the region
-          selector. Scan covers ids 1–{getCoretimeNftScanMaxId()}.
+          Mints a demo region to your wallet. After the transaction confirms, the new region ID is shown below —
+          enter it in the Region ID field on this page.
         </p>
       </div>
       {wrongChain && (
@@ -38,17 +34,30 @@ export function CoretimeMintBanner() {
           Switch to <span className="font-mono">Polkadot Hub TestNet</span> (chain {ASSET_HUB_CHAIN_ID}) to mint.
         </div>
       )}
-      {!isConnected && (
-        <p className="text-xs text-amber-200/90">Connect your wallet to mint.</p>
-      )}
+      {!isConnected && <p className="text-xs text-amber-200/90">Connect your wallet to mint.</p>}
       {error && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {(error as Error).message?.slice(0, 200)}
         </div>
       )}
-      {isSuccess && (
-        <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-400">
-          Mint confirmed — open the region picker to choose your new NFT.
+      {isSuccess && mintedTokenId !== undefined && (
+        <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-400 space-y-1">
+          <div>
+            Mint confirmed — <span className="font-semibold">Region ID</span>{" "}
+            <span className="font-mono text-sm text-white">{mintedTokenId.toString()}</span>
+          </div>
+          {hash && (
+            <div className="text-[10px] text-green-400/80 font-mono break-all">Tx: {hash}</div>
+          )}
+        </div>
+      )}
+      {isSuccess && mintedTokenId === undefined && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 space-y-1">
+          <p>
+            Mint confirmed, but the token ID could not be read from transaction logs (non-standard NFT events on
+            this chain). Check the transaction in your wallet or block explorer.
+          </p>
+          {hash && <p className="font-mono text-[10px] break-all opacity-90">{hash}</p>}
         </div>
       )}
       <Button

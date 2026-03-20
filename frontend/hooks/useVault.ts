@@ -1,5 +1,6 @@
 import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { yieldVaultContract } from "@/lib/contracts";
+import { heavyTxGas } from "@/lib/txGas";
 import { useCallback } from "react";
 import type { VaultStats } from "@/types/protocol";
 
@@ -56,6 +57,7 @@ export function useVaultDeposit() {
         ...yieldVaultContract,
         functionName: "deposit",
         args: [regionId],
+        ...heavyTxGas(),
       });
     },
     [address, writeContractAsync]
@@ -78,6 +80,7 @@ export function useVaultWithdraw() {
         ...yieldVaultContract,
         functionName: "withdraw",
         args: [receiptId],
+        ...heavyTxGas(),
       });
     },
     [writeContractAsync]
@@ -102,6 +105,7 @@ export function useVaultBorrow() {
         ...yieldVaultContract,
         functionName: "borrow",
         args: [coreCount, durationBlocks],
+        ...heavyTxGas(),
       });
     },
     [address, writeContractAsync]
@@ -124,6 +128,7 @@ export function useClaimYield() {
         ...yieldVaultContract,
         functionName: "claimYield",
         args: [receiptId],
+        ...heavyTxGas(),
       });
     },
     [writeContractAsync]
@@ -146,6 +151,7 @@ export function useReturnLoan() {
         ...yieldVaultContract,
         functionName: "returnLoan",
         args: [loanId],
+        ...heavyTxGas(),
       });
     },
     [writeContractAsync]

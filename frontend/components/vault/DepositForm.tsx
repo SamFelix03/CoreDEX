@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useChainId } from "wagmi";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { RegionSelectorField } from "@/components/coretime/RegionSelectorField";
+import { Input } from "@/components/ui/Input";
 import { useVaultDeposit } from "@/hooks/useVault";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 
@@ -31,16 +31,20 @@ export function DepositForm() {
             Switch to <span className="font-mono">Polkadot Hub TestNet</span> (chain {ASSET_HUB_CHAIN_ID}).
           </div>
         )}
-        <RegionSelectorField
-          label="Coretime region"
+        <Input
+          label="Region ID"
+          type="number"
+          placeholder="e.g. 42"
           value={regionId}
-          onChange={(v) => {
+          onChange={(e) => {
             reset();
-            setRegionId(v);
+            setRegionId(e.target.value);
           }}
           disabled={wrongChain}
-          helperText="Deposit your Coretime NFT into the vault. You receive a receipt for yield and later withdrawal."
         />
+        <p className="text-[10px] text-muted-foreground -mt-2">
+          Coretime NFT token id to deposit; you receive a receipt for yield and later withdrawal.
+        </p>
         {error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
             {(error as Error).message?.slice(0, 120)}

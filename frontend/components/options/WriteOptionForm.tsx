@@ -5,7 +5,6 @@ import { useChainId } from "wagmi";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { RegionSelectorField } from "@/components/coretime/RegionSelectorField";
 import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
 import { useWriteCall, useWritePut } from "@/hooks/useOptions";
 import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
@@ -104,16 +103,20 @@ export function WriteOptionForm() {
             {ASSET_HUB_CHAIN_ID}).
           </div>
         )}
-        <RegionSelectorField
-          label="Coretime region"
+        <Input
+          label="Region ID"
+          type="number"
+          placeholder="e.g. 42"
           value={regionId}
-          onChange={(v) => {
+          onChange={(e) => {
             reset();
-            setRegionId(v);
+            setRegionId(e.target.value);
           }}
           disabled={wrongChain}
-          helperText="For calls, pick a region you own that is not locked elsewhere."
         />
+        <p className="text-[10px] text-muted-foreground -mt-2">
+          For calls, use a Coretime NFT you own that is not locked elsewhere.
+        </p>
         <Input
           label="Strike Price"
           suffix="DOT"

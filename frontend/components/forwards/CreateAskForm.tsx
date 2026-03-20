@@ -5,7 +5,6 @@ import { useChainId } from "wagmi";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { RegionSelectorField } from "@/components/coretime/RegionSelectorField";
 import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
 import { useCreateAsk } from "@/hooks/useForwardOrders";
 import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
@@ -60,16 +59,20 @@ export function CreateAskForm() {
     <Card className="animate-slide-in-up">
       <CardHeader label="Create Forward Ask" />
       <CardContent className="flex flex-col gap-4">
-        <RegionSelectorField
-          label="Coretime region"
+        <Input
+          label="Region ID"
+          type="number"
+          placeholder="e.g. 42"
           value={regionId}
-          onChange={(v) => {
+          onChange={(e) => {
             reset();
-            setRegionId(v);
+            setRegionId(e.target.value);
           }}
           disabled={wrongChain}
-          helperText="Choose an NFT you own. It must not already be locked (open forward, option, or vault)."
         />
+        <p className="text-[10px] text-muted-foreground -mt-2">
+          Coretime NFT token id you own; must not already be locked (open forward, option, or vault).
+        </p>
         {wrongChain && (
           <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
             Switch your wallet to <span className="font-mono">Polkadot Hub TestNet</span> (chain{" "}

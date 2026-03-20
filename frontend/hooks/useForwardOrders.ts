@@ -1,5 +1,6 @@
 import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { forwardMarketContract } from "@/lib/contracts";
+import { heavyTxGas } from "@/lib/txGas";
 import { useCallback } from "react";
 import type { ForwardOrder } from "@/types/protocol";
 
@@ -74,6 +75,7 @@ export function useCreateAsk() {
         ...forwardMarketContract,
         functionName: "createAsk",
         args: [regionId, strikePriceDOT, deliveryBlock],
+        ...heavyTxGas(),
       });
     },
     [address, writeContractAsync]
@@ -98,6 +100,7 @@ export function useMatchOrder() {
         ...forwardMarketContract,
         functionName: "matchOrder",
         args: [orderId],
+        ...heavyTxGas(),
       });
     },
     [address, writeContractAsync]
@@ -120,6 +123,7 @@ export function useSettleForward() {
         ...forwardMarketContract,
         functionName: "settle",
         args: [orderId],
+        ...heavyTxGas(),
       });
     },
     [writeContractAsync]
@@ -142,6 +146,7 @@ export function useCancelOrder() {
         ...forwardMarketContract,
         functionName: "cancel",
         args: [orderId],
+        ...heavyTxGas(),
       });
     },
     [writeContractAsync]
