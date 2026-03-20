@@ -82,16 +82,22 @@ function OptionRow({ optionId }: { optionId: bigint }) {
   const statusLabel = getOptionDisplayLabel(option);
   const statusColor = getOptionDisplayColorVar(statusLabel);
   const isWriter = address?.toLowerCase() === option.writer.toLowerCase();
-  const isHolder = address?.toLowerCase() === option.holder.toLowerCase();
   const held = optionHasHolder(option);
+  /** Must have a real holder on-chain (non-zero); avoids any odd decode edge cases. */
+  const isHolder =
+    held && address?.toLowerCase() === option.holder.toLowerCase();
 
   const expiryNum = Number(option.expiryBlock);
   const headNum = headBlock !== undefined ? Number(headBlock) : undefined;
+  /** OptionsEngine.exercise: requires `block.number == expiryBlock` (single block). */
   const atExpiryBlock =
     headNum !== undefined && expiryNum > 0 && headNum === expiryNum;
 
-  /** OptionsEngine: exercise only when block.number == expiryBlock (exact). */
+  /** Open listing: not exercised/expired, no holder yet, connected wallet is not the writer. */
   const canBuy = option.status === 0 && !held && !isWriter && !!address;
+  const canExercise = option.status === 0 && isHolder && atExpiryBlock;
+  const showExercisePending =
+    option.status === 0 && isHolder && !atExpiryBlock && expiryNum > 0;
 
   return (
     <>
@@ -127,7 +133,7 @@ function OptionRow({ optionId }: { optionId: bigint }) {
                   {buyConfirming && !buyWritePending ? "Confirming…" : "Buy"}
                 </Button>
               )}
-              {option.status === 0 && isHolder && (
+              {canExercise && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -137,19 +143,28 @@ function OptionRow({ optionId }: { optionId: bigint }) {
                     void exercise(option.optionId);
                   }}
                   loading={exerciseWritePending}
-                  disabled={
-                    exerciseWritePending || exerciseConfirming || !atExpiryBlock
-                  }
+                  disabled={exerciseWritePending || exerciseConfirming}
                   title={
-                    !atExpiryBlock
-                      ? `Exercise is only allowed at relay block ${String(option.expiryBlock)} (current: ${headNum ?? "…"})`
-                      : exerciseConfirming && !exerciseWritePending
-                        ? "Waiting for block confirmation…"
-                        : undefined
+                    exerciseConfirming && !exerciseWritePending
+                      ? "Waiting for block confirmation…"
+                      : "On-chain exercise is only valid in this exact block"
                   }
                 >
                   {exerciseConfirming && !exerciseWritePending ? "Confirming…" : "Exercise"}
                 </Button>
+              )}
+              {showExercisePending && (
+                <p className="text-[10px] text-muted-foreground leading-snug max-w-[200px]">
+                  Exercise opens only at expiry block{" "}
+                  <span className="font-mono text-foreground">{String(option.expiryBlock)}</span>
+                  {headNum !== undefined ? (
+                    <>
+                      {" "}
+                      · now <span className="font-mono text-foreground">{headNum}</span>
+                    </>
+                  ) : null}
+                  . Buy stays available until someone holds the option.
+                </p>
               )}
             </div>
             {buyError?.message && !buyWritePending && !buyConfirming && (
