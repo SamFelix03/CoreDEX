@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { addHours, format } from "date-fns";
-import { useChainId } from "wagmi";
+import { useChainId, usePublicClient } from "wagmi";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -9,6 +9,7 @@ import { FutureRelayTimeInput } from "@/components/ui/FutureRelayTimeInput";
 import { useCreateAsk } from "@/hooks/useForwardOrders";
 import { useEstimatedRelayBlock } from "@/hooks/useEstimatedRelayBlock";
 import { ASSET_HUB_CHAIN_ID, UI_STRIKE_MAX_WEI, UI_STRIKE_MIN_WEI } from "@/constants";
+import { finalizeEvmFutureBlockForTx } from "@/lib/relayBlockEstimate";
 import { formatDOT, parseDOT } from "@/lib/utils";
 
 export function CreateAskForm() {
@@ -33,7 +34,9 @@ export function CreateAskForm() {
 
   const { createAsk, isPending, isSuccess, error, reset } = useCreateAsk();
   const chainId = useChainId();
+  const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const wrongChain = chainId !== ASSET_HUB_CHAIN_ID;
+  const [blockFinalizeNote, setBlockFinalizeNote] = useState<string | null>(null);
 
   const strikeWei = parseDOT(strikePrice.trim());
   const strikeInRange =
@@ -48,8 +51,26 @@ export function CreateAskForm() {
 
   const handleSubmit = async () => {
     if (!canSubmit || deliveryBlock === null) return;
+    if (!publicClient) {
+      console.error("createAsk: no public client");
+      return;
+    }
+    setBlockFinalizeNote(null);
     try {
-      await createAsk(BigInt(regionId), parseDOT(strikePrice), deliveryBlock);
+      const { block, error: finErr, adjusted } = await finalizeEvmFutureBlockForTx(
+        publicClient,
+        deliveryBlock
+      );
+      if (finErr) {
+        setBlockFinalizeNote(finErr);
+        return;
+      }
+      if (adjusted) {
+        setBlockFinalizeNote(
+          `Using delivery block ${block.toString()} (fresh RPC head + minimum lead — avoids DeliveryBlockInPast).`
+        );
+      }
+      await createAsk(BigInt(regionId), parseDOT(strikePrice), block);
     } catch (e) {
       console.error("createAsk failed:", e);
     }
@@ -116,6 +137,17 @@ export function CreateAskForm() {
           isLoadingHead={isLoadingHead}
           latestBlockNumber={latestBlockNumber}
         />
+        {blockFinalizeNote && (
+          <div
+            className={`rounded-lg border px-4 py-3 text-xs animate-slide-in-up ${
+              blockFinalizeNote.includes("fresh RPC head")
+                ? "border-primary/30 bg-primary/10 text-primary"
+                : "border-destructive/30 bg-destructive/10 text-destructive"
+            }`}
+          >
+            {blockFinalizeNote}
+          </div>
+        )}
         {error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive animate-slide-in-up">
             {(error as Error).message?.slice(0, 120)}
