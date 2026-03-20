@@ -5,7 +5,7 @@
  * - Set `NEXT_PUBLIC_TX_GAS_LIMIT` to a positive number to use that limit on "heavy" txs.
  * - Set `NEXT_PUBLIC_TX_GAS_LIMIT=0` to omit `gas` and let the wallet / node estimate (same as `GAS_LIMIT=0` in scripts).
  *
- * Scripts intentionally do **not** force this limit on `buyOption` — use `lightTxGas()` there.
+ * Set `NEXT_PUBLIC_TX_GAS_LIMIT=0` if the node rejects fixed limits on specific calls (rare).
  */
 const DEFAULT_HEAVY_GAS = 12_000_000n;
 
@@ -23,7 +23,7 @@ export function heavyTxGas(): TxGasOptions {
   return { gas: DEFAULT_HEAVY_GAS };
 }
 
-/** Matches fill-charts: `buyOption` uses default estimation (no fixed gasLimit). */
+/** Let the wallet / RPC estimate gas (omit `gas`). Use when a fixed limit causes rejections. */
 export function lightTxGas(): TxGasOptions {
   return {};
 }

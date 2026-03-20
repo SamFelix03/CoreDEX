@@ -1,9 +1,11 @@
 import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { forwardMarketContract } from "@/lib/contracts";
+import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { heavyTxGas } from "@/lib/txGas";
 import { useCallback } from "react";
 import type { ForwardOrder } from "@/types/protocol";
 import { uint32Arg } from "@/lib/utils";
+import { parseForwardOrderRead } from "@/lib/decodeEvmStructs";
 
 export function useForwardOrders(address?: `0x${string}`) {
   const { data: sellerOrderIds } = useReadContract({
@@ -40,22 +42,7 @@ export function useForwardOrder(orderId: bigint | undefined) {
     query: { enabled: orderId !== undefined },
   });
 
-  const d = data as unknown as unknown[] | undefined;
-  const order: ForwardOrder | undefined = d
-    ? {
-        // Solidity tuple order from `ForwardMarket.orders(orderId)`:
-        //   orderId, seller, buyer, regionId(uint128), strikePriceDOT(uint128),
-        //   deliveryBlock(uint32), createdBlock(uint32), status(uint8)
-        orderId:        d[0] as bigint,
-        seller:         d[1] as string,
-        buyer:          d[2] as string,
-        regionId:       d[3] as bigint,
-        strikePriceDOT: d[4] as bigint,
-        deliveryBlock:  d[5] as bigint,
-        createdBlock:   d[6] as bigint,
-        status:         Number(d[7]),
-      }
-    : undefined;
+  const order: ForwardOrder | undefined = parseForwardOrderRead(data);
 
   return { order, isLoading };
 }
@@ -73,6 +60,8 @@ export function useCreateAsk() {
     async (regionId: bigint, strikePriceDOT: bigint, deliveryBlock: bigint) => {
       if (!address) throw new Error("Wallet not connected");
       return writeContractAsync({
+        chainId: ASSET_HUB_CHAIN_ID,
+        account: address,
         ...forwardMarketContract,
         functionName: "createAsk",
         args: [regionId, strikePriceDOT, uint32Arg(deliveryBlock)],
@@ -98,6 +87,8 @@ export function useMatchOrder() {
     async (orderId: bigint) => {
       if (!address) throw new Error("Wallet not connected");
       return writeContractAsync({
+        chainId: ASSET_HUB_CHAIN_ID,
+        account: address,
         ...forwardMarketContract,
         functionName: "matchOrder",
         args: [orderId],
@@ -111,6 +102,7 @@ export function useMatchOrder() {
 }
 
 export function useSettleForward() {
+  const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
@@ -120,20 +112,24 @@ export function useSettleForward() {
 
   const settle = useCallback(
     async (orderId: bigint) => {
+      if (!address) throw new Error("Wallet not connected");
       return writeContractAsync({
+        chainId: ASSET_HUB_CHAIN_ID,
+        account: address,
         ...forwardMarketContract,
         functionName: "settle",
         args: [orderId],
         ...heavyTxGas(),
       });
     },
-    [writeContractAsync]
+    [address, writeContractAsync]
   );
 
   return { settle, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
 }
 
 export function useCancelOrder() {
+  const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
@@ -143,14 +139,17 @@ export function useCancelOrder() {
 
   const cancel = useCallback(
     async (orderId: bigint) => {
+      if (!address) throw new Error("Wallet not connected");
       return writeContractAsync({
+        chainId: ASSET_HUB_CHAIN_ID,
+        account: address,
         ...forwardMarketContract,
         functionName: "cancel",
         args: [orderId],
         ...heavyTxGas(),
       });
     },
-    [writeContractAsync]
+    [address, writeContractAsync]
   );
 
   return { cancel, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };

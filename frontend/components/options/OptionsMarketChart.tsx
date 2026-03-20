@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { optionsEngineContract } from "@/lib/contracts";
 import { blocksToTime, formatDOT } from "@/lib/utils";
+import { parseOptionRead } from "@/lib/decodeEvmStructs";
 import { DOT_DECIMALS, ASSET_HUB_CHAIN_ID } from "@/constants";
 
 type OptionTypeFilter = "all" | "call" | "put";
@@ -173,24 +174,23 @@ export function OptionsMarketChart() {
       // Fetch option structs so we can plot premiumDOT (the option "price") at the time it was purchased.
       const optionsById = new Map<bigint, TradePoint>();
       await Promise.all(
-        optionIds.map(async (optionId) => {
-          const d = (await pc.readContract({
+        optionIds.map(async (optionId: bigint) => {
+          const raw = await pc.readContract({
             address: optionsEngineContract.address,
             abi: optionsEngineContract.abi,
             functionName: "options",
             args: [optionId],
-          })) as unknown as unknown[];
+          });
+          const parsed = parseOptionRead(raw);
+          if (!parsed) return;
 
           const tradePointBase = {
             optionId,
-            // Solidity tuple order:
-            //   optionId, writer, holder, coretimeRegion, strikePriceDOT,
-            //   premiumDOT, expiryBlock, optionType, status
-            optionType: Number(d[7]),
-            coretimeRegion: toBigint(d[3]),
-            strikePriceDOT: toBigint(d[4]),
-            premiumDOT: toBigint(d[5]),
-            expiryBlock: toBigint(d[6]),
+            optionType: parsed.optionType,
+            coretimeRegion: parsed.coretimeRegion,
+            strikePriceDOT: parsed.strikePriceDOT,
+            premiumDOT: parsed.premiumDOT,
+            expiryBlock: parsed.expiryBlock,
           };
 
           // We'll attach blockNumber later from the OptionPurchased log.

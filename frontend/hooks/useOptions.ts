@@ -1,9 +1,11 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
 import { optionsEngineContract } from "@/lib/contracts";
-import { heavyTxGas, lightTxGas } from "@/lib/txGas";
+import { ASSET_HUB_CHAIN_ID } from "@/constants";
+import { heavyTxGas } from "@/lib/txGas";
 import { useCallback } from "react";
 import type { Option } from "@/types/protocol";
 import { uint32Arg } from "@/lib/utils";
+import { parseOptionRead } from "@/lib/decodeEvmStructs";
 
 export function useOptionsData(address?: `0x${string}`) {
   const { data: writerOptionIds } = useReadContract({
@@ -40,23 +42,7 @@ export function useOption(optionId: bigint | undefined) {
     query: { enabled: optionId !== undefined },
   });
 
-  const d = data as unknown as unknown[] | undefined;
-  const option: Option | undefined = d
-    ? {
-        // Solidity tuple order (OptionsEngine.options getter):
-        //   optionId, writer, holder, coretimeRegion, strikePriceDOT,
-        //   premiumDOT, expiryBlock, optionType, status
-        optionId:       d[0] as bigint,
-        writer:         d[1] as string,
-        holder:         d[2] as string,
-        optionType:     Number(d[7]),
-        coretimeRegion: d[3] as bigint,
-        strikePriceDOT: d[4] as bigint,
-        premiumDOT:     d[5] as bigint,
-        expiryBlock:    d[6] as bigint,
-        status:         Number(d[8]),
-      }
-    : undefined;
+  const option: Option | undefined = parseOptionRead(data);
 
   return { option, isLoading };
 }
@@ -74,6 +60,8 @@ export function useWriteCall() {
     async (regionId: bigint, strikePriceDOT: bigint, expiryBlock: bigint) => {
       if (!address) throw new Error("Wallet not connected");
       return writeContractAsync({
+        chainId: ASSET_HUB_CHAIN_ID,
+        account: address,
         ...optionsEngineContract,
         functionName: "writeCall",
         args: [regionId, strikePriceDOT, uint32Arg(expiryBlock)],
@@ -99,6 +87,8 @@ export function useWritePut() {
     async (regionId: bigint, strikePriceDOT: bigint, expiryBlock: bigint) => {
       if (!address) throw new Error("Wallet not connected");
       return writeContractAsync({
+        chainId: ASSET_HUB_CHAIN_ID,
+        account: address,
         ...optionsEngineContract,
         functionName: "writePut",
         args: [regionId, strikePriceDOT, uint32Arg(expiryBlock)],
@@ -124,10 +114,12 @@ export function useBuyOption() {
     async (optionId: bigint) => {
       if (!address) throw new Error("Wallet not connected");
       return writeContractAsync({
+        chainId: ASSET_HUB_CHAIN_ID,
+        account: address,
         ...optionsEngineContract,
         functionName: "buyOption",
         args: [optionId],
-        ...lightTxGas(),
+        ...heavyTxGas(),
       });
     },
     [address, writeContractAsync]
@@ -137,6 +129,7 @@ export function useBuyOption() {
 }
 
 export function useExerciseOption() {
+  const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending, error: writeError, reset } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
@@ -146,14 +139,17 @@ export function useExerciseOption() {
 
   const exercise = useCallback(
     async (optionId: bigint) => {
+      if (!address) throw new Error("Wallet not connected");
       return writeContractAsync({
+        chainId: ASSET_HUB_CHAIN_ID,
+        account: address,
         ...optionsEngineContract,
         functionName: "exercise",
         args: [optionId],
         ...heavyTxGas(),
       });
     },
-    [writeContractAsync]
+    [address, writeContractAsync]
   );
 
   return { exercise, hash, isPending: isPending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
