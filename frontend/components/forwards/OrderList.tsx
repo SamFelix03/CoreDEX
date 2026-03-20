@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -6,6 +7,9 @@ import { useAccount } from "wagmi";
 import { useForwardOrders, useForwardOrder, useMatchOrder, useCancelOrder, useSettleForward } from "@/hooks/useForwardOrders";
 import { formatDOT, truncateAddress, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from "@/lib/utils";
 import { TxSuccessWithExplorer } from "@/components/ui/TxSuccessWithExplorer";
+import { TxDetailModal } from "@/components/ui/TxDetailModal";
+import { FORWARD_MARKET_ADDRESS } from "@/constants";
+import type { ForwardOrder } from "@/types/protocol";
 
 function OrderRow({ orderId }: { orderId: bigint }) {
   const { order, isLoading } = useForwardOrder(orderId);
@@ -35,9 +39,34 @@ function OrderRow({ orderId }: { orderId: bigint }) {
     reset: resetSettle,
   } = useSettleForward();
 
+  const [matchDetailOpen, setMatchDetailOpen] = useState(false);
+  const [matchDetail, setMatchDetail] = useState<{
+    hash: `0x${string}`;
+    order: ForwardOrder;
+    matcher: `0x${string}`;
+  } | null>(null);
+  const shownMatchHashRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (matchOk && matchHash && order && address) {
+      if (shownMatchHashRef.current !== matchHash) {
+        shownMatchHashRef.current = matchHash;
+        setMatchDetail({
+          hash: matchHash,
+          order: { ...order },
+          matcher: address,
+        });
+        setMatchDetailOpen(true);
+      }
+    }
+    if (!matchOk) {
+      shownMatchHashRef.current = null;
+    }
+  }, [matchOk, matchHash, order, address]);
+
   const successHash =
-    matchOk && matchHash ? matchHash : cancelOk && cancelHash ? cancelHash : settleOk && settleHash ? settleHash : null;
-  const successLabel = matchOk ? "Order matched." : cancelOk ? "Order cancelled." : settleOk ? "Settlement submitted." : null;
+    cancelOk && cancelHash ? cancelHash : settleOk && settleHash ? settleHash : null;
+  const successLabel = cancelOk ? "Order cancelled." : settleOk ? "Settlement submitted." : null;
 
   if (isLoading || !order) {
     return (
@@ -55,6 +84,7 @@ function OrderRow({ orderId }: { orderId: bigint }) {
   const isBuyer  = address?.toLowerCase() === order.buyer.toLowerCase();
 
   return (
+    <>
     <tr className="border-b border-border transition-colors hover:bg-secondary/30">
       <td className="px-4 py-3 text-sm text-foreground">#{String(order.orderId)}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{String(order.regionId)}</td>
@@ -125,6 +155,59 @@ function OrderRow({ orderId }: { orderId: bigint }) {
         </div>
       </td>
     </tr>
+    {matchDetail ? (
+      <TxDetailModal
+        open={matchDetailOpen}
+        onClose={() => {
+          setMatchDetailOpen(false);
+          resetMatch();
+          setMatchDetail(null);
+        }}
+        title="Forward order matched"
+        subtitle="ForwardMarket.matchOrder — your strike (DOT) is escrowed in the market until settlement."
+        txHash={matchDetail.hash}
+        contract={{ label: "ForwardMarket", address: FORWARD_MARKET_ADDRESS }}
+        functionName="matchOrder(uint256 orderId)"
+        rows={[
+          {
+            label: "Order ID",
+            value: `#${String(matchDetail.order.orderId)}`,
+          },
+          {
+            label: "DOT escrowed (strike)",
+            value: `${formatDOT(matchDetail.order.strikePriceDOT)} DOT`,
+            hint: "Transferred from you into ForwardMarket via the assets precompile; released to seller on settle after delivery block.",
+          },
+          {
+            label: "Seller",
+            value: <span className="font-mono text-xs">{matchDetail.order.seller}</span>,
+          },
+          {
+            label: "Buyer (you)",
+            value: <span className="font-mono text-xs">{matchDetail.matcher}</span>,
+          },
+          {
+            label: "Coretime region (NFT id)",
+            value: String(matchDetail.order.regionId),
+          },
+          {
+            label: "Delivery block",
+            value: String(matchDetail.order.deliveryBlock),
+            hint: "After this block, either party can call settle() to trigger settlement + seller payout (per contract).",
+          },
+          {
+            label: "On-chain status after tx",
+            value: "Matched (1)",
+            hint: "ForwardMarket.orders(id).status — list UI refreshes from chain reads.",
+          },
+        ]}
+        footnote={
+          "Settle (separate tx) moves order status to settled, pays the seller the escrowed DOT, and invokes " +
+          "SettlementExecutor for NFT delivery. Explorer shows all events (e.g. OrderMatched)."
+        }
+      />
+    ) : null}
+    </>
   );
 }
 

@@ -17,3 +17,11 @@ export function getTxExplorerUrl(chainId: number, txHash: string): string | null
   const base = raw.replace(/\/$/, "");
   return `${base}/tx/${txHash}`;
 }
+
+/** Blockscout-style contract/account pages (same base as txs). */
+export function getAddressExplorerUrl(chainId: number, address: string): string | null {
+  const raw = TX_EXPLORER_BASE_BY_CHAIN[chainId];
+  if (!raw || !address?.startsWith("0x")) return null;
+  const base = raw.replace(/\/$/, "");
+  return `${base}/address/${address}`;
+}
