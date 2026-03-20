@@ -1,15 +1,5 @@
 # CoreDEX
 
-## Important links
-
-| Resource | Link |
-|----------|------|
-| Smart contracts (Solidity, Hardhat) | [github.com/SamFelix03/coreDEX/tree/main/smart-contracts](https://github.com/SamFelix03/coreDEX/tree/main/smart-contracts) |
-| Rust PVM contracts (PolkaVM binaries built from `rust-contracts`) | [github.com/SamFelix03/coreDEX/tree/main/smart-contracts/rust-contracts](https://github.com/SamFelix03/coreDEX/tree/main/smart-contracts/rust-contracts) |
-| PVM precompiles (reference Substrate / precompile implementations) | [github.com/SamFelix03/coreDEX/tree/main/pvm-modules](https://github.com/SamFelix03/coreDEX/tree/main/pvm-modules) |
-| Demo video | *Link to be added.* |
-| Pitch deck | *Link to be added.* |
-
 ## Introduction
 
 CoreDEX is a **coretime derivatives protocol** for Polkadot: a native layer on **Agile Coretime** that treats blockspace allocations as first-class, financeable assets. It combines Solidity contracts on Polkadot Hub (`pallet-revive`) with **PVM (PolkaVM) Rust** modules for pricing and oracle-style data, and uses **runtime precompiles** (notably the **XCM precompile**) for trust-minimized cross-chain settlement.
@@ -17,6 +7,36 @@ CoreDEX is a **coretime derivatives protocol** for Polkadot: a native layer on *
 - **Forward contracts** — binding agreements to deliver a specific coretime region (NFT) at a future block for an agreed DOT price, with on-chain escrow and settlement.
 - **European-style options** — calls and puts on coretime; premiums are computed via a **Black-Scholes** engine on PVM, using spot and volatility inputs from the **CoretimeOracle** PVM contract.
 - **Yield vaults** — deposit idle coretime NFTs into a pooled lending facility; borrowers pay DOT fees that accrue to depositors, with rates driven by an on-chain utilisation curve.
+
+---
+
+## Important links
+
+| Resource | Link |
+|----------|------|
+| Smart contracts (Solidity, Hardhat) | [Repo](https://github.com/SamFelix03/coreDEX/tree/main/smart-contracts) · [README](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/README.md) |
+| Rust PVM contracts (PolkaVM binaries built from `rust-contracts`) | [Repo](https://github.com/SamFelix03/coreDEX/tree/main/smart-contracts/rust-contracts) · [README](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/rust-contracts/README.md) |
+| PVM precompiles (reference Substrate / precompile implementations) | [Repo](https://github.com/SamFelix03/coreDEX/tree/main/pvm-modules) · [README](https://github.com/SamFelix03/coreDEX/blob/main/pvm-modules/README.md) |
+| Demo video | [View Here](https://www.canva.com/design/DAHEdeXrTPY/jjcR6n7bLREfQAiUqf-jjA/watch?utm_content=DAHEdeXrTPY&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hcfce4f3504) |
+| Pitch deck | [View Here](https://www.canva.com/design/DAHEendUZ_4/binGCcNj3CUyIqOCY04S5A/view?utm_content=DAHEendUZ_4&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hbc5722e6ea) |
+
+## Test runs
+
+Individual Hardhat scripts were run against **Polkadot Hub testnet** (chain id **420420417**). Full console output:
+
+| Script | Log |
+|--------|-----|
+| `test-yieldvault-individual.ts` | [test-runs/test-yieldvault-individual.log](https://github.com/SamFelix03/coreDEX/blob/main/test-runs/test-yieldvault-individual.log) |
+| `test-optionsengine-individual.ts` | [test-runs/test-optionsengine-individual.log](https://github.com/SamFelix03/coreDEX/blob/main/test-runs/test-optionsengine-individual.log) |
+| `test-forwardmarket-individual.ts` | [test-runs/test-forwardmarket-individual.log](https://github.com/SamFelix03/coreDEX/blob/main/test-runs/test-forwardmarket-individual.log) |
+
+Explorer: [Blockscout — Polkadot testnet](https://blockscout-testnet.polkadot.io/).
+
+**YieldVault** — [depositRegion](https://blockscout-testnet.polkadot.io/tx/0x8a1425bbaaa15fde0031aa4122854a6164728fbbf1fd2b281b97d8e08d666dd9), [borrowRegion](https://blockscout-testnet.polkadot.io/tx/0x8788a2f1fa4fc2bf031dc1672752c8a0b99edbbd353e603d923f9627cc1d9f3a)
+
+**OptionsEngine** — [writeCall](https://blockscout-testnet.polkadot.io/tx/0x3ba3aa1378237c2cda2adcac18a5413de5aec1bea99b57cd4742b92a17c2a373), [buyOption](https://blockscout-testnet.polkadot.io/tx/0x944d01a11c090eae2706131efa24ba1b3f9b19db3f912f988df01807a5dd9784)
+
+**ForwardMarket** — [createAsk](https://blockscout-testnet.polkadot.io/tx/0x87b2c15b411c5bf61241c4dadea30f1213a90a7a080583e80817d5f1fb22f627), [matchOrder](https://blockscout-testnet.polkadot.io/tx/0xbabb6ee661124eaef9f838bb000cb6703c4dcf5f8d1b87dd1b0ebc07ed6411f6)
 
 ---
 
@@ -483,6 +503,24 @@ Utilisation curve:
 | [CROSS_VM_ARCHITECTURE.md](https://github.com/SamFelix03/coreDEX/blob/main/CROSS_VM_ARCHITECTURE.md) | Cross-VM diagram, build/deploy commands, production vs hackathon notes |
 
 **Build / deploy (summary):** see [CROSS_VM_ARCHITECTURE.md](https://github.com/SamFelix03/coreDEX/blob/main/CROSS_VM_ARCHITECTURE.md) — `npm run build` in `rust-contracts`, `npm run deploy:pvm:testnet` and related scripts from [package.json](https://github.com/SamFelix03/coreDEX/blob/main/smart-contracts/package.json).
+
+---
+
+## Roadmap
+
+- **Close the product loops in code and tests** — Exercise end-to-end paths that demos and one-off scripts still skip where it matters: forward **settlement** after delivery, option **exercise and expiry**, vault **return / withdraw** after loan expiry, and **CoretimeLedger** consistency across those flows. Expand Hardhat coverage beyond happy-path smoke runs.
+
+- **Harden against real interfaces** — Keep the Solidity ↔ PVM call pattern fixed while replacing **mock** NFT, assets, and oracle surfaces with the **documented Hub precompile and pallet-backed** equivalents as they are available and stable on the networks you target. Tighten ABIs, revert reasons, and gas behaviour against live RPC behaviour.
+
+- **Oracle and pricing grounded in real state** — Evolve **CoretimeOracle** and **PricingModule** from demonstration inputs toward reads of **actual coretime / broker** (or equivalent) state and volatility assumptions you can defend; document what is on-chain vs operator-supplied.
+
+- **SettlementExecutor and XCM** — Validate **SettlementExecutor** against the real **XCM precompile** on Hub testnet and later mainnet: failure modes, message formats, replay or partial-failure handling, and clear user-facing errors when cross-chain steps do not complete.
+
+- **Frontend and operator UX** — Align the app with the same contract versions as deployed addresses; surface order/option/vault state, pending settlement, and failed transactions; add safeguards (allowances, region locks, paused protocol) so users are not surprised at signing time.
+
+- **Observability and integration** — Event indexing or a small API for **open orders, options, and vault positions** so explorers and partners do not need to scrape the chain ad hoc. Publish **deployment manifests** (addresses, chain id, ABI pins) as part of release hygiene.
+
+- **Security and parameters** — Internal review, external audit when scope justifies it, **governance or multisig** ownership stories for upgrades and pause, and explicit **risk disclosure** (e.g. strike bands, utilisation curves, dependency on relay and coretime parachain liveness).
 
 ---
 
