@@ -1,4 +1,4 @@
-import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt, useAccount, usePublicClient } from "wagmi";
+import { useReadContract, useReadContracts, useWriteContract, useAccount, usePublicClient } from "wagmi";
 import { maxUint256 } from "viem";
 import { yieldVaultContract, assetsPrecompileContract } from "@/lib/contracts";
 import { heavyTxGas } from "@/lib/txGas";
@@ -7,7 +7,8 @@ import type { VaultStats } from "@/types/protocol";
 import { uint32Arg } from "@/lib/utils";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { computeVaultBorrowFee } from "@/lib/vaultBorrow";
-import { HUB_TX_RECEIPT_POLL_MS, hubWaitForTransactionReceiptProps } from "@/lib/txReceipt";
+import { HUB_TX_RECEIPT_POLL_MS } from "@/lib/txReceipt";
+import { useHubTransactionReceipt } from "@/hooks/useHubTransactionReceipt";
 
 export function useVaultStats() {
   const { data, isLoading, error } = useReadContracts({
@@ -49,12 +50,7 @@ export function useVaultDeposits(address?: `0x${string}`) {
 export function useVaultDeposit() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const deposit = useCallback(
     async (regionId: bigint) => {
@@ -69,17 +65,12 @@ export function useVaultDeposit() {
     [address, writeContractAsync]
   );
 
-  return { deposit, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { deposit, hash, isPending: isWritePending || isConfirming, isSuccess, error, reset };
 }
 
 export function useVaultWithdraw() {
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const withdraw = useCallback(
     async (receiptId: bigint) => {
@@ -93,19 +84,14 @@ export function useVaultWithdraw() {
     [writeContractAsync]
   );
 
-  return { withdraw, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { withdraw, hash, isPending: isWritePending || isConfirming, isSuccess, error, reset };
 }
 
 export function useVaultBorrow() {
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: ASSET_HUB_CHAIN_ID });
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   /**
    * Same call shape as scripts (`borrow(coreCount, durationBlocks)` with uint32 args).
@@ -166,17 +152,12 @@ export function useVaultBorrow() {
     [address, publicClient, writeContractAsync]
   );
 
-  return { borrow, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { borrow, hash, isPending: isWritePending || isConfirming, isSuccess, error, reset };
 }
 
 export function useClaimYield() {
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   /** `epoch` must match on-chain `claimYield(uint256 receiptTokenId, uint256 epoch)` (e.g. a finalized past epoch). */
   const claimYield = useCallback(
@@ -191,17 +172,12 @@ export function useClaimYield() {
     [writeContractAsync]
   );
 
-  return { claimYield, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { claimYield, hash, isPending: isWritePending || isConfirming, isSuccess, error, reset };
 }
 
 export function useReturnLoan() {
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const returnLoan = useCallback(
     async (loanId: bigint) => {
@@ -215,5 +191,5 @@ export function useReturnLoan() {
     [writeContractAsync]
   );
 
-  return { returnLoan, hash, isPending: isWritePending || isConfirming, isSuccess, error: writeError ?? receiptError, reset };
+  return { returnLoan, hash, isPending: isWritePending || isConfirming, isSuccess, error, reset };
 }

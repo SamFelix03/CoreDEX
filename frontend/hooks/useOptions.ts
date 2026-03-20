@@ -1,4 +1,4 @@
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
+import { useReadContract, useWriteContract, useAccount } from "wagmi";
 import { optionsEngineContract } from "@/lib/contracts";
 import { ASSET_HUB_CHAIN_ID } from "@/constants";
 import { heavyTxGas } from "@/lib/txGas";
@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import type { Option } from "@/types/protocol";
 import { uint32Arg } from "@/lib/utils";
 import { parseOptionRead } from "@/lib/decodeEvmStructs";
-import { hubWaitForTransactionReceiptProps } from "@/lib/txReceipt";
+import { useHubTransactionReceipt } from "@/hooks/useHubTransactionReceipt";
 
 export function useOptionsData(address?: `0x${string}`) {
   const { data: writerOptionIds } = useReadContract({
@@ -51,12 +51,7 @@ export function useOption(optionId: bigint | undefined) {
 export function useWriteCall() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const writeCall = useCallback(
     async (regionId: bigint, strikePriceDOT: bigint, expiryBlock: bigint) => {
@@ -80,7 +75,7 @@ export function useWriteCall() {
     isWritePending,
     isConfirming,
     isSuccess,
-    error: writeError ?? receiptError,
+    error,
     reset,
   };
 }
@@ -88,12 +83,7 @@ export function useWriteCall() {
 export function useWritePut() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const writePut = useCallback(
     async (regionId: bigint, strikePriceDOT: bigint, expiryBlock: bigint) => {
@@ -117,7 +107,7 @@ export function useWritePut() {
     isWritePending,
     isConfirming,
     isSuccess,
-    error: writeError ?? receiptError,
+    error,
     reset,
   };
 }
@@ -125,12 +115,7 @@ export function useWritePut() {
 export function useBuyOption() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const buyOption = useCallback(
     async (optionId: bigint) => {
@@ -154,7 +139,7 @@ export function useBuyOption() {
     isWritePending,
     isConfirming,
     isSuccess,
-    error: writeError ?? receiptError,
+    error,
     reset,
   };
 }
@@ -162,12 +147,7 @@ export function useBuyOption() {
 export function useExerciseOption() {
   const { address } = useAccount();
   const { writeContractAsync, data: hash, isPending: isWritePending, error: writeError, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess, error: receiptError } = useWaitForTransactionReceipt({
-    hash,
-    ...hubWaitForTransactionReceiptProps,
-    query: { enabled: !!hash },
-  });
+  const { isConfirming, isSuccess, error } = useHubTransactionReceipt(hash, writeError);
 
   const exercise = useCallback(
     async (optionId: bigint) => {
@@ -191,7 +171,7 @@ export function useExerciseOption() {
     isWritePending,
     isConfirming,
     isSuccess,
-    error: writeError ?? receiptError,
+    error,
     reset,
   };
 }
